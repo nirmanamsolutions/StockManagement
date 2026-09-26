@@ -20,27 +20,56 @@ import {
   RefreshCwIcon,
   ShieldCheckIcon,
   LockIcon,
-  DownloadIcon
+  DownloadIcon,
+  PencilIcon
 } from '@animateicons/react/lucide';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { billAPI, stockAPI, ledgerAPI } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
+
+// Unit normalization helper: converts 'pcs', 'pkt', 'packet', 'box', 'piece' into 'unit'
+const normalizeUnit = (u) => {
+  if (!u) return 'unit';
+  const norm = String(u).trim().toLowerCase();
+  if (norm === 'pcs' || norm === 'pkt' || norm === 'packet' || norm === 'box' || norm === 'piece' || norm === 'pieces') {
+    return 'unit';
+  }
+  return norm;
+};
+
+// Logical unit choices available for converting right-side cart items
+const getConvertibleUnits = (baseUnitStr) => {
+  const base = normalizeUnit(baseUnitStr);
+  if (base === 'kg' || base === 'g') {
+    return [
+      { id: 'kg', label: 'kg' },
+      { id: 'g', label: 'g' },
+    ];
+  }
+  if (base === 'liter' || base === 'ml') {
+    return [
+      { id: 'liter', label: 'liter' },
+      { id: 'ml', label: 'ml' },
+    ];
+  }
+  if (base === 'quintal') {
+    return [
+      { id: 'quintal', label: 'quintal' },
+      { id: 'kg', label: 'kg' },
+    ];
+  }
+  return [{ id: base, label: base }];
+};
 
 export default function BillingManagement({ setActiveTab, t }) {
-  // Navigation / Workflow Step State
-  // Step 1: Select Products (Blinkit Grid & Search)
-  // Step 2: Review Cart & Summary
-  // Step 3: Payment & Customer Account (Paid vs Katha)
-  // Step 4: Printed Receipt / Completion
-  const [currentStep, setCurrentStep] = useState(1);
-
   // Stock Catalog & Filter State
   const [stockList, setStockList] = useState([]);
   const [loadingStock, setLoadingStock] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Cart Items State: [{ productId, name, unit, sellingPrice, quantity, subtotal, maxStock }]
+  // Cart Items State: [{ productId, name, unit, sellingPrice, costPrice, quantity, subtotal, baseUnit }]
   const [cartItems, setCartItems] = useState([]);
 
   // Payment Mode State
@@ -58,7 +87,12 @@ export default function BillingManagement({ setActiveTab, t }) {
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
 
-  // Receipt State
+  // Quick Edit Stock Modal State in Billing
+  const [quickStockItem, setQuickStockItem] = useState(null);
+  const [quickStockQty, setQuickStockQty] = useState('');
+  const [isUpdatingStock, setIsUpdatingStock] = useState(false);
+
+  // Receipt & Submission State
   const [createdBill, setCreatedBill] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -67,10 +101,10 @@ export default function BillingManagement({ setActiveTab, t }) {
   }, [selectedCategory]);
 
   useEffect(() => {
-    if (currentStep === 3 && paymentStatus === 'UNPAID') {
+    if (paymentStatus === 'UNPAID') {
       fetchLedgerCustomers();
     }
-  }, [currentStep, paymentStatus]);
+  }, [paymentStatus]);
 
   const fetchStock = async (query = searchQuery) => {
     try {
@@ -96,46 +130,103 @@ export default function BillingManagement({ setActiveTab, t }) {
     }
   };
 
-  // Handlers for Blinkit Quantity Selector
+  const handleOpenQuickStockEdit = (product) => {
+    setQuickStockItem(product);
+    setQuickStockQty(product.quantity);
+  };
+
+  const handleSaveQuickStock = async (e) => {
+    e.preventDefault();
+    if (!quickStockItem) return;
+    const qtyNum = parseFloat(quickStockQty);
+    if (isNaN(qtyNum) || qtyNum < 0) {
+      alert('कृपया वैध साठा (Valid Stock Qty) प्रविष्ट करा');
+      return;
+    }
+
+    try {
+      setIsUpdatingStock(true);
+      await stockAPI.update(quickStockItem._id, {
+        ...quickStockItem,
+        quantity: Math.round(qtyNum * 100) / 100,
+      });
+      setQuickStockItem(null);
+      fetchStock();
+    } catch (err) {
+      alert(err.response?.data?.message || 'साठा अपडेट करताना एरर आली.');
+    } finally {
+      setIsUpdatingStock(false);
+    }
+  };
+
+  // Logical Unit conversion subtotal math (Enforces max 2 decimal places)
+  const calculateItemSubtotal = (qtyVal, priceVal, selectedUnitVal, baseUnitVal) => {
+    const qty = parseFloat(qtyVal) || 0;
+    const price = parseFloat(priceVal) || 0;
+    if (qty <= 0 || price <= 0) return 0;
+
+    const base = normalizeUnit(baseUnitVal);
+    const sel = normalizeUnit(selectedUnitVal);
+
+    let rawSubtotal = qty * price;
+    if (base === 'kg' && sel === 'g') {
+      rawSubtotal = (qty * price) / 1000;
+    } else if (base === 'g' && sel === 'kg') {
+      rawSubtotal = qty * price * 1000;
+    } else if (base === 'liter' && sel === 'ml') {
+      rawSubtotal = (qty * price) / 1000;
+    } else if (base === 'ml' && sel === 'liter') {
+      rawSubtotal = qty * price * 1000;
+    } else if (base === 'quintal' && sel === 'kg') {
+      rawSubtotal = (qty * price) / 100;
+    }
+
+    return Math.round(rawSubtotal * 100) / 100;
+  };
+
+  // Handlers for Blinkit Catalog Card Counter
+  const getCartItem = (productId) => {
+    return cartItems.find((c) => c.productId === productId);
+  };
+
   const getCartQuantity = (productId) => {
-    const item = cartItems.find((c) => c.productId === productId);
+    const item = getCartItem(productId);
     return item ? item.quantity : 0;
   };
 
-  const updateCartQuantity = (product, newQty) => {
+  const updateCartProduct = (product, newQty) => {
     const qty = parseFloat(newQty) || 0;
+    const baseUnit = normalizeUnit(product.unit);
     
     if (qty <= 0) {
       setCartItems(cartItems.filter((c) => c.productId !== product._id));
       return;
     }
 
-    if (qty > product.quantity) {
-      alert(
-        (t.cannotAddMoreExceeds || 'Cannot add more. Exceeds available stock ({qty} {unit})')
-          .replace('{qty}', product.quantity)
-          .replace('{unit}', product.unit)
-      );
-      return;
-    }
-
     const existingIndex = cartItems.findIndex((c) => c.productId === product._id);
     if (existingIndex > -1) {
       const updated = [...cartItems];
-      updated[existingIndex].quantity = qty;
-      updated[existingIndex].subtotal = qty * product.sellingPrice;
+      const curItem = updated[existingIndex];
+      const subtotal = calculateItemSubtotal(qty, curItem.sellingPrice, curItem.unit, baseUnit);
+      updated[existingIndex] = {
+        ...curItem,
+        quantity: qty,
+        subtotal: subtotal,
+      };
       setCartItems(updated);
     } else {
+      const subtotal = calculateItemSubtotal(qty, product.sellingPrice, baseUnit, baseUnit);
       setCartItems([
         ...cartItems,
         {
           productId: product._id,
           name: product.name,
-          unit: product.unit,
-          sellingPrice: product.sellingPrice,
+          unit: baseUnit,
+          baseUnit: baseUnit,
+          costPrice: product.costPrice || 0,
+          sellingPrice: product.sellingPrice || 0,
           quantity: qty,
-          subtotal: qty * product.sellingPrice,
-          maxStock: product.quantity,
+          subtotal: subtotal,
         },
       ]);
     }
@@ -143,16 +234,47 @@ export default function BillingManagement({ setActiveTab, t }) {
 
   const handleIncrement = (product) => {
     const current = getCartQuantity(product._id);
-    updateCartQuantity(product, current + 1);
+    updateCartProduct(product, current + 1);
   };
 
   const handleDecrement = (product) => {
     const current = getCartQuantity(product._id);
-    updateCartQuantity(product, current - 1);
+    updateCartProduct(product, current - 1);
   };
 
   const handleWeightPreset = (product, weightVal) => {
-    updateCartQuantity(product, weightVal);
+    updateCartProduct(product, weightVal);
+  };
+
+  // In-cart inline editing for Selling Price, Quantity, and Unit Dropdown
+  const handleUpdateCartItemField = (productId, field, value) => {
+    const updated = cartItems.map((item) => {
+      if (item.productId !== productId) return item;
+
+      let newSellingPrice = item.sellingPrice;
+      let newQuantity = item.quantity;
+      let newUnit = item.unit;
+
+      if (field === 'sellingPrice') newSellingPrice = parseFloat(value) || 0;
+      if (field === 'quantity') newQuantity = parseFloat(value) || 0;
+      if (field === 'unit') newUnit = value;
+
+      const subtotal = calculateItemSubtotal(newQuantity, newSellingPrice, newUnit, item.baseUnit);
+
+      return {
+        ...item,
+        sellingPrice: newSellingPrice,
+        quantity: newQuantity,
+        unit: newUnit,
+        subtotal: subtotal,
+      };
+    });
+
+    setCartItems(updated);
+  };
+
+  const handleRemoveItem = (productId) => {
+    setCartItems(cartItems.filter((c) => c.productId !== productId));
   };
 
   const calculateTotal = () => {
@@ -161,7 +283,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
   const grandTotal = calculateTotal();
 
-  // Add new customer on the fly in Katha step
+  // Add new customer inline for Katha
   const handleAddNewCustomerInline = async (e) => {
     e.preventDefault();
     if (!newCustName.trim() || !newCustPhone.trim()) {
@@ -187,7 +309,6 @@ export default function BillingManagement({ setActiveTab, t }) {
     }
   };
 
-  // Select existing customer from list
   const handleSelectCustomer = (customer) => {
     setSelectedCustomerId(customer._id);
     setCustomerName(customer.name);
@@ -197,22 +318,21 @@ export default function BillingManagement({ setActiveTab, t }) {
   // Submit Final Bill Generation
   const handleFinalSubmitBill = async () => {
     if (cartItems.length === 0) {
-      alert(t.cartEmpty || 'No products added to cart!');
+      alert(t.cartEmpty || 'बिलामध्ये कोणताही माल जोडलेला नाही!');
       return;
     }
 
-    if (paymentStatus === 'UNPAID' && !customerName.trim()) {
-      alert(t.requireNamePhoneForKatha || 'Please select or create a Katha customer account!');
+    if (!customerName.trim() || !customerPhone.trim()) {
+      alert('ग्राहकाचे नाव आणि मोबाईल नंबर दोन्ही भरले पाहिजे! (Customer Name & Phone Number are compulsory)');
       return;
     }
 
     const totalBillAmount = grandTotal;
-    // Amount paid is strictly locked to total bill amount for Paid bills
     const paidAmount = paymentStatus === 'PAID' ? totalBillAmount : 0;
 
     const payload = {
-      customerName: customerName.trim() || t.walkInCustomer || 'Walk-in Customer',
-      customerPhone: customerPhone.trim() || 'N/A',
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
       items: cartItems.map((item) => ({
         productId: item.productId,
         name: item.name,
@@ -231,7 +351,6 @@ export default function BillingManagement({ setActiveTab, t }) {
       setIsSubmitting(true);
       const res = await billAPI.create(payload);
       setCreatedBill(res.data.data);
-      setCurrentStep(4);
       fetchStock(); // Refresh available inventory
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to generate bill');
@@ -265,7 +384,6 @@ export default function BillingManagement({ setActiveTab, t }) {
     }
   };
 
-  // Reset entire POS billing workflow for next customer
   const handleResetWorkflow = () => {
     setCartItems([]);
     setCustomerName('');
@@ -274,7 +392,6 @@ export default function BillingManagement({ setActiveTab, t }) {
     setPaymentStatus('PAID');
     setPaymentType('CASH');
     setCreatedBill(null);
-    setCurrentStep(1);
   };
 
   const filteredProducts = stockList.filter((item) => {
@@ -284,987 +401,106 @@ export default function BillingManagement({ setActiveTab, t }) {
   });
 
   return (
-    <div style={{ maxWidth: '1140px', margin: '0 auto', padding: '0 1rem', paddingBottom: '5rem' }}>
+    <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 1rem', paddingBottom: '5rem' }}>
       
-      {/* Top Header Bar & Back Button */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          {setActiveTab && (
-            <button
-              onClick={() => setActiveTab('home')}
-              className="btn-secondary"
-              style={{
-                padding: '0.4rem 0.85rem',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer'
-              }}
-              title={t.btnBack}
-            >
-              <ArrowLeftIcon size={16} color="var(--primary)" />
-              <span>{t.btnBack}</span>
-            </button>
-          )}
-          <div>
-            <h2 style={{ fontSize: '1.4rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <ShoppingCartIcon size={22} color="var(--primary)" />
-              {t.billingTitle}
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>{t.billingSubtitle}</p>
-          </div>
+      {/* Floating Fixed Circular Back Button */}
+      {setActiveTab && (
+        <button
+          type="button"
+          className="no-print"
+          onClick={() => setActiveTab('home')}
+          style={{
+            position: 'fixed',
+            top: '5.25rem',
+            left: '1.25rem',
+            zIndex: 9999,
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            backgroundColor: '#ffffff',
+            color: 'var(--primary, #4f46e5)',
+            border: '1.5px solid var(--border-color, #e2e8f0)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.14)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.borderColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.boxShadow = '0 6px 18px rgba(79, 70, 229, 0.35)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#ffffff';
+            e.currentTarget.style.color = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.borderColor = 'var(--border-color, #e2e8f0)';
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.14)';
+          }}
+          title={t.btnBack || 'मुख्यपृष्ठावर जा'}
+        >
+          <ArrowLeftIcon size={22} />
+        </button>
+      )}
+
+      {/* Page Header Bar */}
+      <div className="no-print" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '1.25rem'
+      }}>
+        <div>
+          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+            <ShoppingCartIcon size={24} color="var(--primary)" />
+            {t.billingTitle || 'नवीन ग्राहक बिल (POS Billing)'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
+            {t.billingSubtitle || 'साठ्यातून माल निवडा, दर/प्रमाण तपासा आणि पावती बनवा'}
+          </p>
         </div>
 
-        {/* Start New Order Button */}
-        {cartItems.length > 0 && currentStep !== 4 && (
+        {cartItems.length > 0 && !createdBill && (
           <button
             onClick={handleResetWorkflow}
             className="btn-secondary"
-            style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', borderRadius: '20px' }}
+            style={{ fontSize: '0.78rem', padding: '0.4rem 0.85rem', borderRadius: '20px' }}
           >
             <RefreshCwIcon size={14} />
-            {t.newOrder || 'Reset Order'}
+            {t.newOrder || 'नवीन बिल (Reset)'}
           </button>
         )}
       </div>
 
-      {/* Stepper Progress Bar */}
-      <div className="card-surface no-print" style={{ padding: '0.75rem 1.25rem', marginBottom: '1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-          
-          {/* Step 1 Pill */}
-          <div 
-            onClick={() => setCurrentStep(1)}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.45rem', 
-              cursor: 'pointer',
-              opacity: currentStep === 1 ? 1 : 0.7 
-            }}
-          >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: currentStep >= 1 ? 'var(--primary)' : 'var(--border-color)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '0.82rem'
-            }}>
-              {currentStep > 1 ? <CheckIcon size={16} color="#ffffff" /> : '1'}
-            </div>
-            <span style={{ fontWeight: currentStep === 1 ? 800 : 600, fontSize: '0.85rem', color: currentStep === 1 ? 'var(--primary)' : 'var(--text-heading)' }}>
-              {t.step1Title}
-            </span>
-          </div>
-
-          <div style={{ height: '2px', flex: 1, background: currentStep >= 2 ? 'var(--primary)' : '#e2e8f0', margin: '0 0.75rem' }} />
-
-          {/* Step 2 Pill */}
-          <div 
-            onClick={() => cartItems.length > 0 && setCurrentStep(2)}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.45rem', 
-              cursor: cartItems.length > 0 ? 'pointer' : 'not-allowed',
-              opacity: currentStep === 2 ? 1 : (cartItems.length > 0 ? 0.7 : 0.4) 
-            }}
-          >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: currentStep >= 2 ? 'var(--primary)' : 'var(--border-color)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '0.82rem'
-            }}>
-              {currentStep > 2 ? <CheckIcon size={16} color="#ffffff" /> : '2'}
-            </div>
-            <span style={{ fontWeight: currentStep === 2 ? 800 : 600, fontSize: '0.85rem', color: currentStep === 2 ? 'var(--primary)' : 'var(--text-heading)' }}>
-              {t.step2Title}
-            </span>
-          </div>
-
-          <div style={{ height: '2px', flex: 1, background: currentStep >= 3 ? 'var(--primary)' : '#e2e8f0', margin: '0 0.75rem' }} />
-
-          {/* Step 3 Pill */}
-          <div 
-            onClick={() => cartItems.length > 0 && setCurrentStep(3)}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.45rem', 
-              cursor: cartItems.length > 0 ? 'pointer' : 'not-allowed',
-              opacity: currentStep === 3 ? 1 : (cartItems.length > 0 ? 0.7 : 0.4)
-            }}
-          >
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: currentStep >= 3 ? 'var(--primary)' : 'var(--border-color)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '0.82rem'
-            }}>
-              {currentStep > 3 ? <CheckIcon size={16} color="#ffffff" /> : '3'}
-            </div>
-            <span style={{ fontWeight: currentStep === 3 ? 800 : 600, fontSize: '0.85rem', color: currentStep === 3 ? 'var(--primary)' : 'var(--text-heading)' }}>
-              {t.step3Title}
-            </span>
-          </div>
-
-          <div style={{ height: '2px', flex: 1, background: currentStep === 4 ? 'var(--primary)' : '#e2e8f0', margin: '0 0.75rem' }} />
-
-          {/* Step 4 Pill */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.45rem', 
-            opacity: currentStep === 4 ? 1 : 0.4 
-          }}>
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '50%',
-              background: currentStep === 4 ? 'var(--success)' : 'var(--border-color)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '0.82rem'
-            }}>
-              4
-            </div>
-            <span style={{ fontWeight: currentStep === 4 ? 800 : 600, fontSize: '0.85rem', color: currentStep === 4 ? 'var(--success)' : 'var(--text-heading)' }}>
-              {t.step4Title}
-            </span>
-          </div>
-
-        </div>
-      </div>
-
-      {/* STEP 1: BLINKIT-STYLE PRODUCT CATALOG & SEARCH */}
-      {currentStep === 1 && (
-        <div className="no-print">
-          {/* Search Bar & Category Filters Toolbar */}
-          <div className="card-surface" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem', background: '#ffffff' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              
-              {/* Product Search Input */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <div style={{ position: 'absolute', left: '0.85rem', pointerEvents: 'none' }}>
-                  <SearchIcon size={20} color="var(--primary)" />
-                </div>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder={t.searchProduct || 'Search product by name (e.g. Sugar, Oil, Rice)...'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ paddingLeft: '2.6rem', height: '44px', fontSize: '0.95rem' }}
-                />
-              </div>
-
-              {/* Category Pills */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflowX: 'auto', paddingBottom: '4px' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <FilterIcon size={14} color="var(--primary)" /> Filter:
-                </span>
-                
-                {[
-                  { id: '', label: t.catAll },
-                  { id: 'Grains & Pulses', label: t.catGrains },
-                  { id: 'Oils & Ghee', label: t.catOils },
-                  { id: 'Spices & Dryfruits', label: t.catSpices },
-                  { id: 'Beverages & Snacks', label: t.catSnacks },
-                  { id: 'Soaps & Cleaning', label: t.catCleaning },
-                  { id: 'General Kirana', label: t.catGeneral }
-                ].map((cat) => {
-                  const isActive = selectedCategory === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedCategory(cat.id)}
-                      style={{
-                        padding: '0.35rem 0.85rem',
-                        borderRadius: '20px',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        border: '1px solid',
-                        borderColor: isActive ? 'var(--primary)' : 'var(--border-color)',
-                        background: isActive ? 'var(--primary)' : '#f8fafc',
-                        color: isActive ? '#ffffff' : 'var(--text-body)',
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {cat.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-            </div>
-          </div>
-
-          {/* Product Cards Grid (Blinkit Aesthetic) */}
-          {loadingStock ? (
-            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-              Loading products inventory...
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="card-surface" style={{ textAlign: 'center', padding: '3rem 1.5rem', background: '#ffffff' }}>
-              <PackageIcon size={40} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
-              <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.noStockFound || 'No stock items found.'}</p>
-            </div>
-          ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
-              gap: '1rem',
-              marginBottom: '2rem'
-            }}>
-              {filteredProducts.map((product) => {
-                const cartQty = getCartQuantity(product._id);
-                const isLowStock = product.quantity <= (product.minStockAlert || 5);
-                const isOutOfStock = product.quantity <= 0;
-
-                return (
-                  <div
-                    key={product._id}
-                    className="card-surface"
-                    style={{
-                      padding: '1rem',
-                      background: '#ffffff',
-                      borderRadius: 'var(--radius-md)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      position: 'relative',
-                      border: cartQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                      boxShadow: cartQty > 0 ? '0 4px 14px var(--primary-glow)' : 'var(--shadow-card)',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {/* Top Category Tag & Stock Status */}
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', marginBottom: '0.45rem' }}>
-                        <span style={{
-                          fontSize: '0.68rem',
-                          background: 'var(--bg-surface-raised)',
-                          color: 'var(--text-muted)',
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: '12px',
-                          fontWeight: 700
-                        }}>
-                          {product.category || 'Kirana'}
-                        </span>
-
-                        <span style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          color: isOutOfStock ? 'var(--danger)' : (isLowStock ? '#d97706' : 'var(--success)')
-                        }}>
-                          {isOutOfStock ? 'Out of Stock' : `${product.quantity} ${product.unit}`}
-                        </span>
-                      </div>
-
-                      {/* Product Name */}
-                      <h4 style={{
-                        fontSize: '0.96rem',
-                        fontWeight: 800,
-                        color: 'var(--text-heading)',
-                        marginBottom: '0.35rem',
-                        lineHeight: 1.25
-                      }}>
-                        {product.name}
-                      </h4>
-
-                      {/* Selling Price */}
-                      <div style={{ marginBottom: '0.85rem' }}>
-                        <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
-                          ₹{product.sellingPrice}
-                        </span>
-                        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
-                          / {product.unit}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Blinkit Quantity Controls */}
-                    <div>
-                      {/* Weight Preset Pills for kg/g items */}
-                      {(product.unit === 'kg' || product.unit === 'g' || product.unit === 'liter') && (
-                        <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.45rem' }}>
-                          {[0.25, 0.5, 1, 2].map((preset) => (
-                            <button
-                              key={preset}
-                              type="button"
-                              onClick={() => handleWeightPreset(product, preset)}
-                              style={{
-                                flex: 1,
-                                padding: '0.15rem 0',
-                                fontSize: '0.68rem',
-                                fontWeight: 700,
-                                borderRadius: '4px',
-                                border: '1px solid var(--border-color)',
-                                background: cartQty === preset ? 'var(--primary-light)' : '#f8fafc',
-                                color: cartQty === preset ? 'var(--primary)' : 'var(--text-body)',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {preset}{product.unit === 'g' ? 'g' : product.unit === 'liter' ? 'L' : 'kg'}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Single Clean ADD Button or Sleek Blinkit Counter Pill */}
-                      {cartQty === 0 ? (
-                        <button
-                          type="button"
-                          disabled={isOutOfStock}
-                          onClick={() => handleIncrement(product)}
-                          style={{
-                            width: '100%',
-                            padding: '0.45rem',
-                            fontSize: '0.85rem',
-                            fontWeight: 800,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.35rem',
-                            borderRadius: 'var(--radius-sm)',
-                            border: '1.5px solid var(--primary)',
-                            background: 'var(--primary-light)',
-                            color: 'var(--primary)',
-                            cursor: 'pointer',
-                            opacity: isOutOfStock ? 0.5 : 1,
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <PlusIcon size={16} color="var(--primary)" /> ADD
-                        </button>
-                      ) : (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '2px 4px',
-                          boxShadow: '0 3px 10px var(--primary-glow)',
-                          height: '36px'
-                        }}>
-                          <button
-                            type="button"
-                            onClick={() => handleDecrement(product)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#ffffff',
-                              width: '30px',
-                              height: '30px',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                            title="Decrease Quantity"
-                          >
-                            <MinusIcon size={16} color="#ffffff" />
-                          </button>
-
-                          <div style={{
-                            fontWeight: 800,
-                            fontSize: '0.88rem',
-                            color: '#ffffff',
-                            padding: '0 0.4rem',
-                            userSelect: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.2rem'
-                          }}>
-                            <span>{cartQty}</span>
-                            <span style={{ fontSize: '0.74rem', opacity: 0.85, fontWeight: 600 }}>{product.unit}</span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleIncrement(product)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#ffffff',
-                              width: '30px',
-                              height: '30px',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                            title="Increase Quantity"
-                          >
-                            <PlusIcon size={16} color="#ffffff" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Sticky Bottom Floating Cart Bar */}
-          {cartItems.length > 0 && (
-            <div style={{
-              position: 'fixed',
-              bottom: '1rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 'calc(100% - 2.5rem)',
-              maxWidth: '1100px',
-              background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-              borderRadius: 'var(--radius-md)',
-              padding: '0.75rem 1.4rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              boxShadow: '0 10px 30px var(--primary-glow)',
-              zIndex: 100
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', color: '#ffffff' }}>
-                <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.45rem', borderRadius: '50%', display: 'flex' }}>
-                  <ShoppingCartIcon size={22} color="#ffffff" />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.92rem' }}>
-                    {t.itemsInCart.replace('{count}', cartItems.length)}
-                  </div>
-                  <div style={{ fontSize: '0.78rem', opacity: 0.9 }}>
-                    Total: <strong style={{ fontSize: '1.05rem' }}>₹{grandTotal}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setCurrentStep(2)}
-                style={{
-                  background: '#ffffff',
-                  color: 'var(--primary)',
-                  border: 'none',
-                  padding: '0.6rem 1.4rem',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.9rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                }}
-              >
-                <span>{t.proceedToPay || 'Proceed to Pay ➔'}</span>
-                <ArrowRightIcon size={18} />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* STEP 2: REVIEW ORDER CART & TOTAL */}
-      {currentStep === 2 && (
-        <div className="no-print" style={{ maxWidth: '800px', margin: '0 auto' }}>
-          
-          <div className="card-surface" style={{ padding: '1.5rem', background: '#ffffff', marginBottom: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setCurrentStep(1)}
-                style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
-              >
-                {t.backToSelectItems}
-              </button>
-
-              <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-heading)' }}>
-                {t.step2Title}
-              </h3>
-            </div>
-
-            {/* Itemized Table */}
-            <div style={{ overflowX: 'auto', marginBottom: '1.25rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0.5rem' }}>{t.itemCol}</th>
-                    <th style={{ padding: '0.5rem' }}>{t.priceCol}</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>{t.qtyCol}</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'right' }}>{t.subtotalCol}</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>{t.actionCol}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cartItems.map((item) => (
-                    <tr key={item.productId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 700, color: 'var(--text-heading)' }}>
-                        {item.name}
-                      </td>
-                      <td style={{ padding: '0.75rem 0.5rem', fontSize: '0.88rem' }}>
-                        ₹{item.sellingPrice} / {item.unit}
-                      </td>
-                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center', fontWeight: 800 }}>
-                        {item.quantity} {item.unit}
-                      </td>
-                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: 800, color: 'var(--primary)' }}>
-                        ₹{item.subtotal}
-                      </td>
-                      <td style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => setCartItems(cartItems.filter((c) => c.productId !== item.productId))}
-                          style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}
-                          title="Remove item"
-                        >
-                          <TrashIcon size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Total Grand Summary Card */}
-            <div style={{
-              background: 'var(--bg-surface-raised)',
-              padding: '1rem 1.25rem',
-              borderRadius: 'var(--radius-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1.5rem'
-            }}>
-              <div>
-                <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  Total Items: {cartItems.length}
-                </span>
-                <h3 style={{ fontSize: '1.4rem', margin: 0, color: 'var(--text-heading)', fontWeight: 800 }}>
-                  {t.totalAmount}: ₹{grandTotal}
-                </h3>
-              </div>
-
-              <SparklesIcon size={28} color="var(--primary)" />
-            </div>
-
-            {/* Select Payment Mode (Paid vs Katha) */}
-            <h4 style={{ fontSize: '0.95rem', marginBottom: '0.85rem', color: 'var(--text-heading)', fontWeight: 800 }}>
-              {t.selectPaymentOption}
-            </h4>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              
-              {/* Option A: Paid (Cash / Online) */}
-              <div 
-                onClick={() => setPaymentStatus('PAID')}
-                style={{
-                  border: paymentStatus === 'PAID' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                  background: paymentStatus === 'PAID' ? '#f4f5ff' : '#ffffff',
-                  padding: '1.1rem',
-                  borderRadius: 'var(--radius-md)',
-                  cursor: 'pointer',
-                  boxShadow: paymentStatus === 'PAID' ? '0 4px 12px var(--primary-glow)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
-                  <BanknoteIcon size={22} color="var(--primary)" />
-                  <strong style={{ fontSize: '1rem', color: 'var(--text-heading)' }}>
-                    {t.optionPaidTitle}
-                  </strong>
-                </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                  {t.optionPaidDesc}
-                </p>
-              </div>
-
-              {/* Option B: Katha Ledger (Credit) */}
-              <div 
-                onClick={() => setPaymentStatus('UNPAID')}
-                style={{
-                  border: paymentStatus === 'UNPAID' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                  background: paymentStatus === 'UNPAID' ? '#f4f5ff' : '#ffffff',
-                  padding: '1.1rem',
-                  borderRadius: 'var(--radius-md)',
-                  cursor: 'pointer',
-                  boxShadow: paymentStatus === 'UNPAID' ? '0 4px 12px var(--primary-glow)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
-                  <BookOpenIcon size={22} color="var(--primary)" />
-                  <strong style={{ fontSize: '1rem', color: 'var(--text-heading)' }}>
-                    {t.optionKathaTitle}
-                  </strong>
-                </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                  {t.optionKathaDesc}
-                </p>
-              </div>
-
-            </div>
-
-            {/* Next Button */}
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setCurrentStep(3)}
-              style={{
-                width: '100%',
-                height: '46px',
-                fontSize: '1rem',
-                justifyContent: 'center',
-                borderRadius: 'var(--radius-sm)'
-              }}
-            >
-              <span>Continue to {paymentStatus === 'PAID' ? 'Payment Method' : 'Katha Customer Link'} ➔</span>
-            </button>
-
-          </div>
-        </div>
-      )}
-
-      {/* STEP 3: PAYMENT METHOD (PAID) OR KATHA CUSTOMER LINK */}
-      {currentStep === 3 && (
-        <div className="no-print" style={{ maxWidth: '750px', margin: '0 auto' }}>
-          
-          <div className="card-surface" style={{ padding: '1.5rem', background: '#ffffff', marginBottom: '1.25rem' }}>
-            
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setCurrentStep(2)}
-                style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
-              >
-                {t.backToOrderSummary}
-              </button>
-
-              <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text-heading)' }}>
-                {t.step3Title}
-              </h3>
-            </div>
-
-            {/* Total Bill Pill */}
-            <div style={{
-              background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-              color: '#ffffff',
-              padding: '1rem 1.25rem',
-              borderRadius: 'var(--radius-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1.4rem'
-            }}>
-              <div>
-                <span style={{ fontSize: '0.82rem', opacity: 0.9 }}>Total Invoice Amount</span>
-                <h3 style={{ fontSize: '1.6rem', margin: 0, fontWeight: 800 }}>₹{grandTotal}</h3>
-              </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '0.78rem', background: 'rgba(255,255,255,0.2)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontWeight: 700 }}>
-                  {paymentStatus === 'PAID' ? 'Instant Payment' : 'Katha Credit Account'}
-                </span>
-              </div>
-            </div>
-
-            {/* BRANCH A: IF PAID SELECTED */}
-            {paymentStatus === 'PAID' && (
-              <div>
-                <h4 style={{ fontSize: '0.92rem', marginBottom: '0.65rem', color: 'var(--text-heading)', fontWeight: 800 }}>
-                  {t.paymentType}
-                </h4>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat( auto-fit, minmax(130px, 1fr) )', gap: '0.65rem', marginBottom: '1.25rem' }}>
-                  {[
-                    { id: 'CASH', label: t.payCash },
-                    { id: 'UPI', label: t.payUpi },
-                    { id: 'CARD', label: t.payCard },
-                    { id: 'OTHER', label: t.payOther }
-                  ].map((method) => (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() => setPaymentType(method.id)}
-                      style={{
-                        padding: '0.65rem',
-                        fontSize: '0.82rem',
-                        fontWeight: 700,
-                        border: '1px solid',
-                        borderColor: paymentType === method.id ? 'var(--primary)' : 'var(--border-color)',
-                        background: paymentType === method.id ? 'var(--primary-light)' : '#ffffff',
-                        color: paymentType === method.id ? 'var(--primary)' : 'var(--text-body)',
-                        borderRadius: 'var(--radius-sm)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {method.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Locked Amount Paid Field (Strictly read-only) */}
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                    <span>{t.amountPaid}</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--primary-light)', padding: '0.15rem 0.5rem', borderRadius: '12px', fontWeight: 700 }}>
-                      <LockIcon size={12} color="var(--primary)" /> Locked to Bill Total
-                    </span>
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }}>
-                      <LockIcon size={16} color="var(--primary)" />
-                    </div>
-                    <input
-                      type="number"
-                      readOnly
-                      disabled
-                      className="input-field"
-                      value={grandTotal}
-                      style={{
-                        paddingLeft: '2.5rem',
-                        background: '#f1f5f9',
-                        color: 'var(--text-heading)',
-                        fontWeight: 800,
-                        cursor: 'not-allowed',
-                        borderColor: 'var(--border-color)'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Customer Name Optional Field */}
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                    {t.customerName} (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder="Walk-in Customer / नियमित ग्राहक"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* BRANCH B: IF KATHA LEDGER SELECTED */}
-            {paymentStatus === 'UNPAID' && (
-              <div>
-                <h4 style={{ fontSize: '0.95rem', marginBottom: '0.65rem', color: 'var(--text-heading)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <BookOpenIcon size={18} color="var(--primary)" />
-                  {t.selectCustomerForKatha}
-                </h4>
-
-                {/* Customer Search Bar */}
-                <div style={{ display: 'flex', gap: '0.65rem', marginBottom: '1rem' }}>
-                  <div style={{ position: 'relative', flex: 1 }}>
-                    <input
-                      type="text"
-                      className="input-field"
-                      placeholder={t.selectExistingCustomer}
-                      value={customerSearchQuery}
-                      onChange={(e) => {
-                        setCustomerSearchQuery(e.target.value);
-                        fetchLedgerCustomers(e.target.value);
-                      }}
-                      style={{ height: '40px', fontSize: '0.88rem' }}
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setShowAddCustomerForm(!showAddCustomerForm)}
-                    style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem', whiteSpace: 'nowrap' }}
-                  >
-                    <PlusIcon size={16} /> {t.addNewCustomerQuick}
-                  </button>
-                </div>
-
-                {/* Add New Customer Inline Form */}
-                {showAddCustomerForm && (
-                  <form onSubmit={handleAddNewCustomerInline} style={{ background: 'var(--bg-surface-raised)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', border: '1px dashed var(--primary)' }}>
-                    <h5 style={{ margin: '0 0 0.65rem 0', color: 'var(--primary)', fontSize: '0.88rem' }}>Create Customer Katha Account</h5>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '0.65rem' }}>
-                      <input
-                        type="text"
-                        required
-                        className="input-field"
-                        placeholder="Customer Name *"
-                        value={newCustName}
-                        onChange={(e) => setNewCustName(e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        required
-                        className="input-field"
-                        placeholder="Phone Number *"
-                        value={newCustPhone}
-                        onChange={(e) => setNewCustPhone(e.target.value)}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                      <button type="button" className="btn-secondary" onClick={() => setShowAddCustomerForm(false)} style={{ fontSize: '0.78rem', padding: '0.25rem 0.65rem' }}>Cancel</button>
-                      <button type="submit" className="btn-primary" style={{ fontSize: '0.78rem', padding: '0.25rem 0.75rem' }}>Save & Select</button>
-                    </div>
-                  </form>
-                )}
-
-                {/* Customer Selection Cards List */}
-                <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                  {loadingCustomers ? (
-                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>Loading customer list...</div>
-                  ) : ledgerCustomers.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>No customers found. Click "+ Create New Customer" above.</div>
-                  ) : (
-                    ledgerCustomers.map((cust) => {
-                      const isSelected = selectedCustomerId === cust._id;
-                      return (
-                        <div
-                          key={cust._id}
-                          onClick={() => handleSelectCustomer(cust)}
-                          style={{
-                            padding: '0.75rem 1rem',
-                            borderRadius: 'var(--radius-sm)',
-                            border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                            background: isSelected ? 'var(--primary-light)' : '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                            {isSelected ? (
-                              <CheckIcon size={20} color="var(--primary)" />
-                            ) : (
-                              <UserIcon size={18} color="var(--text-muted)" />
-                            )}
-                            <div>
-                              <strong style={{ fontSize: '0.9rem', color: 'var(--text-heading)', display: 'block' }}>{cust.name}</strong>
-                              <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>📞 {cust.phone}</span>
-                            </div>
-                          </div>
-
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Current Due</span>
-                            <span style={{ fontSize: '0.88rem', fontWeight: 800, color: (cust.totalDue || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                              ₹{cust.totalDue || 0}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Katha Notice Box */}
-                {selectedCustomerId && (
-                  <div style={{
-                    background: 'var(--bg-surface-raised)',
-                    border: '1px solid var(--primary-light)',
-                    padding: '0.75rem 0.9rem',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.82rem',
-                    color: 'var(--primary)',
-                    fontWeight: 700,
-                    marginBottom: '1.25rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                    <ShieldCheckIcon size={18} color="var(--primary)" />
-                    <span>
-                      {t.kathaActiveNoticeDesc.replace('{amount}', grandTotal).replace('{customer}', customerName)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Final Submit Button */}
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleFinalSubmitBill}
-              className="btn-primary"
-              style={{
-                width: '100%',
-                height: '46px',
-                fontSize: '1rem',
-                justifyContent: 'center',
-                borderRadius: 'var(--radius-sm)'
-              }}
-            >
-              <PrinterIcon size={18} color="#ffffff" />
-              <span>{isSubmitting ? 'Generating Invoice...' : t.completeAndGenerateBill}</span>
-            </button>
-
-          </div>
-        </div>
-      )}
-
-      {/* STEP 4: GENERATED INVOICE / PRINTABLE RECEIPT */}
-      {currentStep === 4 && createdBill && (
+      {/* RENDER PRINTABLE INVOICE RECEIPT IF BILL CREATED */}
+      {createdBill ? (
         <div style={{ maxWidth: '650px', margin: '0 auto' }}>
-          
           <div className="card-surface" style={{ padding: '2rem', background: '#ffffff', textAlign: 'center', position: 'relative' }}>
-            
             <div className="no-print" style={{ display: 'inline-flex', background: 'var(--success-bg)', padding: '0.85rem', borderRadius: '50%', marginBottom: '1rem' }}>
               <CheckIcon size={36} color="var(--success)" />
             </div>
 
             <h3 className="no-print" style={{ fontSize: '1.4rem', color: 'var(--text-heading)', fontWeight: 800, marginBottom: '0.25rem' }}>
-              Bill Generated Successfully!
+              बिल यशस्वीरित्या सेव्ह झाले!
             </h3>
             <p className="no-print" style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginBottom: '1.5rem' }}>
-              Invoice ID: <strong style={{ color: 'var(--primary)' }}>#{createdBill.billId}</strong>
+              बिल नंबर: <strong style={{ color: 'var(--primary)' }}>#{createdBill.billId}</strong>
             </p>
 
-            {/* Printable Thermal/Paper Receipt Container */}
+            {/* Printable Thermal Receipt Container */}
             <div 
               id="pos-bill-receipt-paper"
               className="printable-area"
               style={{
                 background: '#ffffff',
-                border: '1px solid #1c1917',
-                padding: '1.25rem',
+                border: '1.5px solid #000000',
+                padding: '1.75rem 2.25rem',
                 borderRadius: '0',
                 textAlign: 'left',
                 marginBottom: '1.5rem',
@@ -1272,11 +508,11 @@ export default function BillingManagement({ setActiveTab, t }) {
                 color: '#000000',
                 fontFamily: 'monospace, "Courier New", sans-serif',
                 boxShadow: 'var(--shadow-card)',
-                maxWidth: '480px',
-                margin: '0 auto 1.5rem auto'
+                maxWidth: '540px',
+                margin: '0 auto 1.5rem auto',
+                boxSizing: 'border-box'
               }}
             >
-              {/* Shop Header */}
               <div style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
                 <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif' }}>
                   {t.shopOwnerTitle || 'शरद गौरीशंकर आंडगे'}
@@ -1289,7 +525,6 @@ export default function BillingManagement({ setActiveTab, t }) {
                 </div>
               </div>
 
-              {/* Customer & Invoice Meta Header */}
               <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '0.45rem 0', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                 <div>
                   <div><strong>NAME :</strong> {createdBill.customerName}</div>
@@ -1302,33 +537,31 @@ export default function BillingManagement({ setActiveTab, t }) {
                 </div>
               </div>
 
-              {/* Items Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                    <th style={{ padding: '0.25rem 0', width: '8%' }}>S/N</th>
-                    <th style={{ padding: '0.25rem 0' }}>Particulars</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'right' }}>Qty</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'center' }}>Unit</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'right' }}>Rate</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'right' }}>AMT</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>S/N</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>Particulars</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
                   </tr>
                 </thead>
                 <tbody>
                   {createdBill.items.map((item, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
-                      <td style={{ padding: '0.3rem 0' }}>{idx + 1}</td>
-                      <td style={{ padding: '0.3rem 0', fontWeight: 700 }}>{item.name}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'right' }}>{Number(item.quantity).toFixed(3)}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'center', textTransform: 'uppercase' }}>{item.unit}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'right' }}>{Number(item.sellingPrice).toFixed(2)}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'right', fontWeight: 800 }}>{Number(item.subtotal).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.quantity).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.sellingPrice).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.subtotal).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              {/* Total Items & Total Amount */}
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {createdBill.items.length}</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
@@ -1336,7 +569,6 @@ export default function BillingManagement({ setActiveTab, t }) {
                 </span>
               </div>
 
-              {/* Payment Details Section */}
               <div style={{ borderBottom: '1px solid #000', paddingBottom: '0.45rem', marginBottom: '0.65rem', fontSize: '0.8rem' }}>
                 <div style={{ textAlign: 'center', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '0.05em' }}>
                   PAYMENT DETAILS
@@ -1353,13 +585,11 @@ export default function BillingManagement({ setActiveTab, t }) {
                 </div>
               </div>
 
-              {/* Footer Notice */}
               <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.76rem', color: '#444' }}>
                 धन्यवाद, पुन्हा या! • Thank You!
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="no-print" style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
@@ -1383,6 +613,19 @@ export default function BillingManagement({ setActiveTab, t }) {
 
               <button
                 type="button"
+                className="btn-secondary"
+                onClick={() => setActiveTab && setActiveTab('home')}
+                style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                <span>{t.homeBtn || 'मुख्यपृष्ठ (Home)'}</span>
+              </button>
+
+              <button
+                type="button"
                 className="btn-primary"
                 onClick={handleResetWorkflow}
                 style={{ padding: '0.6rem 1.4rem', fontSize: '0.9rem' }}
@@ -1391,7 +634,786 @@ export default function BillingManagement({ setActiveTab, t }) {
                 {t.newOrder || 'Start New Order'}
               </button>
             </div>
+          </div>
+        </div>
+      ) : (
+        /* SPACIOUS 2-COLUMN LAYOUT: BLINKIT-STYLE PRODUCT CATALOG GRID (LEFT) + RIGHT SIDE LIVE CART LIST & CHECKOUT PANEL (RIGHT) */
+        <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(380px, 460px)', gap: '1.5rem', alignItems: 'start' }}>
+          
+          {/* LEFT SIDE: PRODUCT CATALOG SEARCH & BLINKIT-STYLE PRODUCT CARDS GRID */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            
+            {/* Search Bar & Category Filters Toolbar */}
+            <div className="card-surface" style={{ padding: '1rem 1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                
+                {/* Product Search Input */}
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ position: 'absolute', left: '0.85rem', pointerEvents: 'none' }}>
+                    <SearchIcon size={20} color="var(--primary)" />
+                  </div>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder={t.searchProduct || 'मालाचे नाव शोधा (उदा. साखर, तेल, तांदूळ)...'}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ paddingLeft: '2.6rem', height: '44px', fontSize: '0.95rem' }}
+                  />
+                </div>
 
+                {/* Category Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflowX: 'auto', paddingBottom: '4px' }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <FilterIcon size={14} color="var(--primary)" /> प्रकार:
+                  </span>
+                  
+                  {[
+                    { id: '', label: t.catAll || 'सर्व प्रकार' },
+                    { id: 'Grains & Pulses', label: t.catGrains || 'धान्य व डाळी' },
+                    { id: 'Oils & Ghee', label: t.catOils || 'तेल आणि तूप' },
+                    { id: 'Spices & Dryfruits', label: t.catSpices || 'मसाले व ड्रायफ्रूट्स' },
+                    { id: 'Beverages & Snacks', label: t.catSnacks || 'चहा, पेये व बिस्किटे' },
+                    { id: 'Soaps & Cleaning', label: t.catCleaning || 'साबण व स्वच्छता' },
+                    { id: 'General Kirana', label: t.catGeneral || 'जनरल किराणा' }
+                  ].map((cat) => {
+                    const isActive = selectedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.id)}
+                        style={{
+                          padding: '0.35rem 0.85rem',
+                          borderRadius: '20px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          border: '1px solid',
+                          borderColor: isActive ? 'var(--primary)' : 'var(--border-color)',
+                          background: isActive ? 'var(--primary)' : '#f8fafc',
+                          color: isActive ? '#ffffff' : 'var(--text-body)',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+              </div>
+            </div>
+
+            {/* Product Cards Grid */}
+            {loadingStock ? (
+              <LoadingSpinner text="मालाचे कॅटलॉग लोड होत आहे..." />
+            ) : filteredProducts.length === 0 ? (
+              <div className="card-surface" style={{ textAlign: 'center', padding: '3rem 1.5rem', background: '#ffffff' }}>
+                <PackageIcon size={40} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
+                <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.noStockFound || 'कोणताही माल सापडला नाही.'}</p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                gap: '1rem',
+                maxHeight: 'calc(100vh - 240px)',
+                overflowY: 'auto',
+                paddingRight: '4px'
+              }}>
+                {filteredProducts.map((product) => {
+                  const cartQty = getCartQuantity(product._id);
+                  const isLowStock = product.quantity <= (product.minStockAlert || 5);
+                  const isOutOfStock = product.quantity <= 0;
+
+                  return (
+                    <div
+                      key={product._id}
+                      className="card-surface"
+                      style={{
+                        padding: '1rem',
+                        background: '#ffffff',
+                        borderRadius: 'var(--radius-md)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        position: 'relative',
+                        border: cartQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                        boxShadow: cartQty > 0 ? '0 4px 14px var(--primary-glow)' : 'var(--shadow-card)',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {/* Top Category Tag & Stock Status */}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', marginBottom: '0.45rem' }}>
+                          <span style={{
+                            fontSize: '0.68rem',
+                            background: 'var(--bg-surface-raised)',
+                            color: 'var(--text-muted)',
+                            padding: '0.15rem 0.45rem',
+                            borderRadius: '12px',
+                            fontWeight: 700
+                          }}>
+                            {product.category || 'Kirana'}
+                          </span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              color: isOutOfStock ? 'var(--danger)' : (isLowStock ? '#d97706' : 'var(--success)')
+                            }}>
+                              {isOutOfStock ? 'साठा ०' : `साठा: ${Number(product.quantity).toFixed(2)} ${normalizeUnit(product.unit)}`}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenQuickStockEdit(product);
+                              }}
+                              style={{
+                                border: 'none',
+                                background: '#e0e7ff',
+                                color: '#4338ca',
+                                padding: '0.15rem 0.45rem',
+                                borderRadius: '8px',
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                transition: 'all 0.15s ease'
+                              }}
+                              title="दुकानातील साठा (Stock) बदला"
+                            >
+                              <PencilIcon size={10} />
+                              बदला
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Product Name */}
+                        <h4 style={{
+                          fontSize: '0.96rem',
+                          fontWeight: 800,
+                          color: 'var(--text-heading)',
+                          marginBottom: '0.35rem',
+                          lineHeight: 1.25
+                        }}>
+                          {product.name}
+                        </h4>
+
+                        {/* Selling & Purchase Price */}
+                        <div style={{ marginBottom: '0.85rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                          <div>
+                            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
+                              ₹{product.sellingPrice}
+                            </span>
+                            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>
+                              /{normalizeUnit(product.unit)}
+                            </span>
+                          </div>
+
+                          {/* Purchase Price Label */}
+                          <div style={{ fontSize: '0.7rem', color: '#92400e', background: '#fef3c7', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 700 }}>
+                            खरेदी: ₹{product.costPrice || 0}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quantity Controls */}
+                      <div>
+                        {/* Weight Preset Pills for kg/g/liter items */}
+                        {(normalizeUnit(product.unit) === 'kg' || normalizeUnit(product.unit) === 'g' || normalizeUnit(product.unit) === 'liter') && (
+                          <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.45rem' }}>
+                            {[0.25, 0.5, 1, 2].map((preset) => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => handleWeightPreset(product, preset)}
+                                style={{
+                                  flex: 1,
+                                  padding: '0.2rem 0',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  borderRadius: '4px',
+                                  border: '1px solid var(--border-color)',
+                                  background: cartQty === preset ? 'var(--primary-light)' : '#f8fafc',
+                                  color: cartQty === preset ? 'var(--primary)' : 'var(--text-body)',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {preset}{product.unit === 'g' ? 'g' : product.unit === 'liter' ? 'L' : 'kg'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* ADD Button or Blinkit Counter Pill */}
+                        {cartQty === 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => handleIncrement(product)}
+                            style={{
+                              width: '100%',
+                              padding: '0.5rem',
+                              fontSize: '0.88rem',
+                              fontWeight: 800,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.35rem',
+                              borderRadius: 'var(--radius-sm)',
+                              border: '1.5px solid var(--primary)',
+                              background: 'var(--primary-light)',
+                              color: 'var(--primary)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <PlusIcon size={16} color="var(--primary)" /> ADD
+                          </button>
+                        ) : (
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '2px 4px',
+                            boxShadow: '0 3px 10px var(--primary-glow)',
+                            height: '38px'
+                          }}>
+                            <button
+                              type="button"
+                              onClick={() => handleDecrement(product)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#ffffff',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyCenter: 'center'
+                              }}
+                              title="Decrease Quantity"
+                            >
+                              <MinusIcon size={16} color="#ffffff" />
+                            </button>
+
+                            <div style={{
+                              fontWeight: 800,
+                              fontSize: '0.9rem',
+                              color: '#ffffff',
+                              padding: '0 0.4rem',
+                              userSelect: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.2rem'
+                            }}>
+                              <span>{cartQty}</span>
+                              <span style={{ fontSize: '0.76rem', opacity: 0.85, fontWeight: 600 }}>{product.unit}</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleIncrement(product)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#ffffff',
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyCenter: 'center'
+                              }}
+                              title="Increase Quantity"
+                            >
+                              <PlusIcon size={16} color="#ffffff" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+          </div>
+
+          {/* RIGHT SIDE: SPACIOUS STICKY LIVE CART LIST & CHECKOUT PANEL */}
+          <div style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            
+            <div className="card-surface" style={{ padding: '1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)' }}>
+              
+              {/* Cart Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-color)' }}>
+                <h3 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--text-heading)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <ShoppingCartIcon size={22} color="var(--primary)" />
+                  बिलातील वस्तूंची यादी (Selected List)
+                </h3>
+                <span style={{ fontSize: '0.8rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontWeight: 800 }}>
+                  {cartItems.length} वस्तू
+                </span>
+              </div>
+
+              {/* Selected Items List Container */}
+              <div style={{ maxHeight: '360px', overflowY: 'auto', marginBottom: '1.25rem', paddingRight: '4px' }}>
+                {cartItems.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                    <ShoppingCartIcon size={36} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{t.cartEmpty || 'बिलामध्ये कोणताही माल जोडलेला नाही.'}</p>
+                    <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>डाव्या बाजूच्या कॅटलॉगवरून वस्तू निवडा</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {cartItems.map((item) => (
+                      <div
+                        key={item.productId}
+                        style={{
+                          background: '#f8fafc',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '0.75rem 0.85rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        {/* Row 1: Item Name, Purchase Price & Trash Button */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>
+                              {item.name}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#92400e', fontWeight: 700 }}>
+                              खरेदी भाव: ₹{item.costPrice || 0}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(item.productId)}
+                            style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.2rem' }}
+                            title="काढून टाका"
+                          >
+                            <TrashIcon size={16} />
+                          </button>
+                        </div>
+
+                        {/* Row 2: Editable Controls (Selling Price, Quantity, Unit, Subtotal) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr 1.2fr', gap: '0.45rem', alignItems: 'center' }}>
+                          
+                          {/* Selling Price */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '2px' }}>
+                              विक्री दर (₹)
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={item.sellingPrice}
+                              onChange={(e) => handleUpdateCartItemField(item.productId, 'sellingPrice', e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: '0.3rem 0.4rem',
+                                fontSize: '0.82rem',
+                                fontWeight: 800,
+                                color: 'var(--primary)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '4px',
+                                background: '#ffffff'
+                              }}
+                            />
+                          </div>
+
+                          {/* Quantity */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '2px' }}>
+                              प्रमाण
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0.001"
+                              value={item.quantity}
+                              onChange={(e) => handleUpdateCartItemField(item.productId, 'quantity', e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: '0.3rem 0.4rem',
+                                fontSize: '0.82rem',
+                                fontWeight: 800,
+                                textAlign: 'center',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '4px',
+                                background: '#ffffff'
+                              }}
+                            />
+                          </div>
+
+                          {/* Unit Dropdown - LOGICAL CONVERSIONS ONLY (kg <-> g, liter <-> ml, unit) */}
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '2px' }}>
+                              युनिट
+                            </label>
+                            <select
+                              value={normalizeUnit(item.unit)}
+                              onChange={(e) => handleUpdateCartItemField(item.productId, 'unit', e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: '0.3rem 0.2rem',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '4px',
+                                background: '#ffffff'
+                              }}
+                            >
+                              {getConvertibleUnits(item.baseUnit).map((u) => (
+                                <option key={u.id} value={u.id}>{u.label}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Subtotal */}
+                          <div style={{ textAlign: 'right' }}>
+                            <label style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '2px' }}>
+                              एकूण रक्कम
+                            </label>
+                            <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)' }}>
+                              ₹{item.subtotal.toFixed(2)}
+                            </span>
+                          </div>
+
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Total Grand Summary Banner */}
+              <div style={{
+                background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                color: '#ffffff',
+                padding: '0.95rem 1.25rem',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '1.25rem',
+                boxShadow: '0 4px 14px var(--primary-glow)'
+              }}>
+                <div>
+                  <span style={{ fontSize: '0.82rem', color: '#ffffff', opacity: 1, fontWeight: 700 }}>
+                    एकूण बिल रक्कम (Total Amount)
+                  </span>
+                  <h3 style={{ fontSize: '1.65rem', margin: 0, fontWeight: 800, color: '#ffffff' }}>
+                    ₹{grandTotal.toFixed(2)}
+                  </h3>
+                </div>
+                <SparklesIcon size={26} color="#ffffff" />
+              </div>
+
+              {/* Payment Mode Selection (Paid vs Katha) */}
+              <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '0.45rem', color: 'var(--text-heading)', fontWeight: 800 }}>
+                {t.selectPaymentOption || 'पेमेंट प्रकार निवडा (Payment Mode)'}
+              </label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div 
+                  onClick={() => setPaymentStatus('PAID')}
+                  style={{
+                    border: paymentStatus === 'PAID' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: paymentStatus === 'PAID' ? '#f4f5ff' : '#ffffff',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <BanknoteIcon size={20} color="var(--primary)" style={{ marginBottom: '0.2rem' }} />
+                  <strong style={{ fontSize: '0.85rem', color: 'var(--text-heading)', display: 'block' }}>
+                    {t.paid || 'रोख / ऑनलाईन'}
+                  </strong>
+                </div>
+
+                <div 
+                  onClick={() => setPaymentStatus('UNPAID')}
+                  style={{
+                    border: paymentStatus === 'UNPAID' ? '2px solid var(--danger)' : '1px solid var(--border-color)',
+                    background: paymentStatus === 'UNPAID' ? '#fff5f5' : '#ffffff',
+                    padding: '0.75rem',
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <BookOpenIcon size={20} color="var(--danger)" style={{ marginBottom: '0.2rem' }} />
+                  <strong style={{ fontSize: '0.85rem', color: 'var(--danger)', display: 'block' }}>
+                    {t.unpaid || 'उधारी खाता (Katha)'}
+                  </strong>
+                </div>
+              </div>
+
+              {/* PAYMENT DETAILS / KATHA CUSTOMER SELECTOR */}
+              {paymentStatus === 'PAID' ? (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                    पेमेंट पद्धत (Payment Method)
+                  </label>
+                  <select
+                    className="input-field"
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value)}
+                    style={{ fontSize: '0.85rem', height: '38px', marginBottom: '0.65rem' }}
+                  >
+                    <option value="CASH">{t.payCash || 'रोख (Cash)'}</option>
+                    <option value="UPI">{t.payUpi || 'GPay / PhonePe (UPI)'}</option>
+                    <option value="CARD">{t.payCard || 'कार्ड (Card)'}</option>
+                    <option value="OTHER">{t.payOther || 'इतर (Other)'}</option>
+                  </select>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                        ग्राहकाचे नाव (Name) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="input-field"
+                        placeholder="उदा. राहुल पाटील *"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        style={{ fontSize: '0.82rem', height: '38px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                        मोबाईल नंबर (Phone) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="input-field"
+                        placeholder="उदा. 9822XXXXXX *"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        style={{ fontSize: '0.82rem', height: '38px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                    उधारीसाठी ग्राहक निवडा (Select Customer) *
+                  </label>
+                  
+                  <div style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.55rem' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="नाव / नंबर शोधा..."
+                      value={customerSearchQuery}
+                      onChange={(e) => {
+                        setCustomerSearchQuery(e.target.value);
+                        fetchLedgerCustomers(e.target.value);
+                      }}
+                      style={{ fontSize: '0.82rem', height: '36px', flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setShowAddCustomerForm(!showAddCustomerForm)}
+                      style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
+                    >
+                      <PlusIcon size={14} /> नवीन
+                    </button>
+                  </div>
+
+                  {showAddCustomerForm && (
+                    <form onSubmit={handleAddNewCustomerInline} style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: 'var(--radius-sm)', marginBottom: '0.65rem', border: '1px dashed var(--primary)' }}>
+                      <input
+                        type="text"
+                        required
+                        className="input-field"
+                        placeholder="ग्राहकाचे नाव *"
+                        value={newCustName}
+                        onChange={(e) => setNewCustName(e.target.value)}
+                        style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.4rem' }}
+                      />
+                      <input
+                        type="text"
+                        required
+                        className="input-field"
+                        placeholder="फोन नंबर *"
+                        value={newCustPhone}
+                        onChange={(e) => setNewCustPhone(e.target.value)}
+                        style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.5rem' }}
+                      />
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                        <button type="button" className="btn-secondary" onClick={() => setShowAddCustomerForm(false)} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}>रद्द</button>
+                        <button type="submit" className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>सेव्ह करा</button>
+                      </div>
+                    </form>
+                  )}
+
+                  <select
+                    className="input-field"
+                    value={selectedCustomerId || ''}
+                    onChange={(e) => {
+                      const cust = ledgerCustomers.find((c) => c._id === e.target.value);
+                      if (cust) handleSelectCustomer(cust);
+                    }}
+                    style={{ fontSize: '0.85rem', height: '38px', fontWeight: 700, marginBottom: '0.55rem' }}
+                  >
+                    <option value="">-- उधारी ग्राहक निवडा --</option>
+                    {ledgerCustomers.map((cust) => (
+                      <option key={cust._id} value={cust._id}>
+                        {cust.name} ({cust.phone}) - उधारी: ₹{cust.totalDue}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                        ग्राहकाचे नाव *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="input-field"
+                        placeholder="ग्राहकाचे नाव *"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        style={{ fontSize: '0.82rem', height: '36px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                        मोबाईल नंबर *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="input-field"
+                        placeholder="मोबाईल नंबर *"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        style={{ fontSize: '0.82rem', height: '36px' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* GENERATE BILL BUTTON */}
+              <button
+                type="button"
+                disabled={isSubmitting || cartItems.length === 0}
+                onClick={handleFinalSubmitBill}
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  justifyContent: 'center',
+                  borderRadius: 'var(--radius-sm)',
+                  opacity: (isSubmitting || cartItems.length === 0) ? 0.6 : 1,
+                  cursor: (isSubmitting || cartItems.length === 0) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <PrinterIcon size={20} color="#ffffff" />
+                <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* Quick Edit Stock Modal in Billing */}
+      {quickStockItem && (
+        <div className="no-print" style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem'
+        }}>
+          <div className="card-surface" style={{
+            background: '#ffffff',
+            padding: '1.5rem',
+            borderRadius: 'var(--radius-md)',
+            maxWidth: '380px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+          }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-heading)' }}>
+              साठा बदला (Update Stock)
+            </h3>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <strong>{quickStockItem.name}</strong> चा नवीन उपलब्ध साठा प्रविष्ट करा:
+            </p>
+
+            <form onSubmit={handleSaveQuickStock}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.35rem' }}>
+                  नवीन उपलब्ध साठा ({normalizeUnit(quickStockItem.unit)}):
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input-field"
+                  value={quickStockQty}
+                  onChange={(e) => setQuickStockQty(e.target.value)}
+                  autoFocus
+                  required
+                  style={{ fontSize: '1rem', fontWeight: 700 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.65rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setQuickStockItem(null)}
+                  disabled={isUpdatingStock}
+                >
+                  रद्द करा (Cancel)
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={isUpdatingStock}
+                >
+                  {isUpdatingStock ? 'सेव्ह होत आहे...' : 'साठा सेव्ह करा (Save)'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

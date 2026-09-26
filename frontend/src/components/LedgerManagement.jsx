@@ -8,9 +8,18 @@ import {
   HistoryIcon, 
   ArrowUpRightIcon, 
   ArrowDownRightIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  EyeIcon,
+  PrinterIcon,
+  DownloadIcon,
+  XIcon,
+  CheckIcon,
+  BookOpenIcon
 } from '@animateicons/react/lucide';
-import { ledgerAPI } from '../services/api';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { ledgerAPI, billAPI } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
 export default function LedgerManagement({ setActiveTab, t }) {
   const [customers, setCustomers] = useState([]);
@@ -21,6 +30,10 @@ export default function LedgerManagement({ setActiveTab, t }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [customerDetails, setCustomerDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // Selected Transaction Bill Modal for viewing related invoice
+  const [selectedTxBill, setSelectedTxBill] = useState(null);
+  const [showBillModal, setShowBillModal] = useState(false);
 
   // Add Customer Modal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -132,36 +145,113 @@ export default function LedgerManagement({ setActiveTab, t }) {
     }
   };
 
+  const handleViewBill = async (tx) => {
+    if (!tx || tx.type !== 'DUE') return;
+    try {
+      if (tx.billId && typeof tx.billId === 'object' && tx.billId._id) {
+        setSelectedTxBill(tx.billId);
+        setShowBillModal(true);
+      } else if (tx.billId) {
+        const res = await billAPI.getById(tx.billId);
+        setSelectedTxBill(res.data.data);
+        setShowBillModal(true);
+      } else {
+        alert('या व्यवहाराची बिल माहिती उपलब्ध नाही (Bill details not linked)');
+      }
+    } catch (err) {
+      console.error('Failed to load bill details:', err);
+      alert('बिल लोड करण्यास अडचण आली (Failed to load bill)');
+    }
+  };
+
+  const handleDownloadLedgerPDF = async () => {
+    try {
+      const receiptElem = document.getElementById('ledger-bill-receipt-paper');
+      if (!receiptElem) return;
+
+      const canvas = await html2canvas(receiptElem, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Invoice_${selectedTxBill?.billId || 'Receipt'}.pdf`);
+    } catch (err) {
+      console.error('Failed to download PDF receipt:', err);
+      alert('Failed to download PDF receipt');
+    }
+  };
+
   return (
     <div style={{ maxWidth: '1140px', margin: '0 auto', padding: '0 1.25rem' }}>
       
-      {/* Top Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          {setActiveTab && (
-            <button
-              onClick={() => setActiveTab('home')}
-              className="btn-secondary"
-              style={{
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer'
-              }}
-              title={t.btnBack}
-            >
-              <ArrowLeftIcon size={16} color="var(--primary)" />
-              <span>{t.btnBack}</span>
-            </button>
-          )}
-          <div>
-            <h2 style={{ fontSize: '1.7rem', margin: 0, color: 'var(--text-heading)' }}>{t.ledgerTitle}</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>{t.ledgerSubtitle}</p>
-          </div>
+      {/* Floating Fixed Circular Back Button */}
+      {setActiveTab && (
+        <button
+          type="button"
+          className="no-print"
+          onClick={() => setActiveTab('home')}
+          style={{
+            position: 'fixed',
+            top: '5.25rem',
+            left: '1.25rem',
+            zIndex: 9999,
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            backgroundColor: '#ffffff',
+            color: 'var(--primary, #4f46e5)',
+            border: '1.5px solid var(--border-color, #e2e8f0)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.14)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.borderColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.boxShadow = '0 6px 18px rgba(79, 70, 229, 0.35)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#ffffff';
+            e.currentTarget.style.color = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.borderColor = 'var(--border-color, #e2e8f0)';
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.14)';
+          }}
+          title={t.btnBack || 'मुख्यपृष्ठावर जा'}
+        >
+          <ArrowLeftIcon size={22} />
+        </button>
+      )}
+
+      {/* Top Page Header Bar */}
+      <div className="no-print" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '1.25rem'
+      }}>
+        <div>
+          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+            <BookOpenIcon size={24} color="var(--primary)" />
+            {t.ledgerTitle || 'उधारी खाता (Katha Ledger)'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
+            {t.ledgerSubtitle || 'ग्राहकांच्या उधारीचे व्यवस्थापन, जमा नोंद आणि व्हाट्सएप मेसेज'}
+          </p>
         </div>
 
         <button className="btn-primary" onClick={() => setShowAddModal(true)}>
@@ -190,7 +280,9 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
           {/* Customers Directory List */}
           <div className="card-surface" style={{ maxHeight: '600px', overflowY: 'auto', padding: '0.5rem', background: '#ffffff' }}>
-            {customers.length === 0 ? (
+            {loading ? (
+              <LoadingSpinner text="उधारी खाते लोड होत आहेत..." />
+            ) : customers.length === 0 ? (
               <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 1rem' }}>
                 {t.noCustomers}
               </p>
@@ -218,9 +310,9 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h4 style={{ fontSize: '0.92rem', margin: 0, color: 'var(--text-heading)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whitespace: 'nowrap' }}>{c.name}</h4>
-                      <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         <PhoneIcon size={12} color="var(--primary)" /> {c.phone}
-                      </p>
+                      </div>
                     </div>
 
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -246,7 +338,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
         {/* Right Column: Customer Due Detail & Payment Ledger Timeline */}
         <div className="card-surface" style={{ padding: '1.25rem 1.4rem', background: '#ffffff' }}>
           {detailsLoading ? (
-            <p style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>{t.loadingKathaHistory}</p>
+            <LoadingSpinner text="व्यवहार इतिहास लोड होत आहे..." />
           ) : !customerDetails ? (
             <p style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>{t.selectCustomerPrompt}</p>
           ) : (
@@ -264,9 +356,9 @@ export default function LedgerManagement({ setActiveTab, t }) {
               }}>
                 <div>
                   <h3 style={{ fontSize: '1.3rem', marginBottom: '0.15rem', color: 'var(--text-heading)' }}>{customerDetails.customer.name}</h3>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <PhoneIcon size={14} color="var(--primary)" /> {t.phoneNo}: <strong>{customerDetails.customer.phone}</strong>
-                  </p>
+                  </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
@@ -323,17 +415,21 @@ export default function LedgerManagement({ setActiveTab, t }) {
                     return (
                       <div
                         key={tx._id}
+                        onClick={() => isDue && handleViewBill(tx)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           padding: '0.75rem 0.95rem',
-                          background: 'var(--bg-surface-raised)',
+                          background: isDue ? 'var(--danger-bg)' : 'var(--bg-surface-raised)',
                           borderRadius: 'var(--radius-sm)',
                           marginBottom: '0.5rem',
                           borderLeft: `4px solid ${isDue ? 'var(--danger)' : 'var(--success)'}`,
-                          gap: '0.75rem'
+                          gap: '0.75rem',
+                          cursor: isDue ? 'pointer' : 'default',
+                          transition: 'all 0.15s ease'
                         }}
+                        title={isDue ? 'ह्या व्यवहाराचे बील पहा (Click to view bill)' : ''}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-heading)' }}>
@@ -345,10 +441,15 @@ export default function LedgerManagement({ setActiveTab, t }) {
                           </p>
                         </div>
 
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
                           <span style={{ fontWeight: 800, fontSize: '1rem', color: isDue ? 'var(--danger)' : 'var(--success)' }}>
                             {isDue ? '+' : '-'}₹{tx.amount}
                           </span>
+                          {isDue && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: '#ffffff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid var(--primary-light)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <EyeIcon size={12} color="var(--primary)" /> बील पहा
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
@@ -492,6 +593,186 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW CREDIT TRANSACTION BILL MODAL (Requirement 8) */}
+      {showBillModal && selectedTxBill && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          
+          <div className="card-surface" style={{
+            background: '#ffffff',
+            width: '100%',
+            maxWidth: '560px',
+            borderRadius: 'var(--radius-lg)',
+            padding: '1.75rem',
+            position: 'relative',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            
+            {/* Modal Header Bar */}
+            <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-heading)' }}>
+                उधारी बील पावती (Bill Receipt) #{selectedTxBill.billId}
+              </h3>
+
+              <button
+                type="button"
+                onClick={() => setShowBillModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <XIcon size={22} />
+              </button>
+            </div>
+
+            {/* Printable Paper Container */}
+            <div 
+              id="ledger-bill-receipt-paper"
+              className="printable-area"
+              style={{
+                background: '#ffffff',
+                border: '1.5px solid #000000',
+                padding: '1.75rem 2.25rem',
+                borderRadius: '0',
+                textAlign: 'left',
+                marginBottom: '1.25rem',
+                fontSize: '0.84rem',
+                color: '#000000',
+                fontFamily: 'monospace, "Courier New", sans-serif',
+                boxShadow: 'var(--shadow-subtle)',
+                boxSizing: 'border-box'
+              }}
+            >
+              {/* Shop Title */}
+              <div style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
+                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif' }}>
+                  {t.shopOwnerTitle || 'शरद गौरीशंकर आंडगे'}
+                </h2>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>
+                  {t.shopSubTitle || 'किराणा स्टोअर्स मोहोळ'}
+                </div>
+                <div style={{ fontSize: '0.74rem', color: '#333' }}>
+                  प्लॉट नं. २१/२२, मार्केट यार्ड, मोहोळ, MOB NO:- 9921979797
+                </div>
+              </div>
+
+              {/* Customer & Invoice Meta Header */}
+              <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '0.45rem 0', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                <div>
+                  <div><strong>NAME :</strong> {selectedTxBill.customerName}</div>
+                  <div><strong>PH :</strong> {selectedTxBill.customerPhone || ''}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div><strong>Bill No. :</strong> {selectedTxBill.billId}</div>
+                  <div><strong>Date :</strong> {new Date(selectedTxBill.createdAt).toLocaleDateString('en-GB')}</div>
+                  <div><strong>Time :</strong> {new Date(selectedTxBill.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>S/N</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>Particulars</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(selectedTxBill.items || []).map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
+                      <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.quantity).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.sellingPrice).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.subtotal).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Total Items & Total Amount */}
+              <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {(selectedTxBill.items || []).length}</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                  एकूण रक्कम : {Number(selectedTxBill.totalAmount || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Payment Details Section */}
+              <div style={{ borderBottom: '1px solid #000', paddingBottom: '0.45rem', marginBottom: '0.65rem', fontSize: '0.8rem' }}>
+                <div style={{ textAlign: 'center', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '0.05em' }}>
+                  PAYMENT DETAILS
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <div>
+                    <div>CASH REC. : {selectedTxBill.paymentType === 'CASH' && selectedTxBill.paymentStatus === 'PAID' ? Number(selectedTxBill.amountPaid).toFixed(2) : '0.00'}</div>
+                    <div>PHONE PAY : {selectedTxBill.paymentType === 'UPI' && selectedTxBill.paymentStatus === 'PAID' ? Number(selectedTxBill.amountPaid).toFixed(2) : '0.00'}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div>RETURN AMT : 0.00</div>
+                    <div>CREDIT : {selectedTxBill.paymentStatus === 'UNPAID' ? Number(selectedTxBill.totalAmount).toFixed(2) : '0.00'}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Notice */}
+              <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.76rem', color: '#444' }}>
+                धन्यवाद, पुन्हा या! • Thank You!
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="no-print" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => window.print()}
+                style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem' }}
+              >
+                <PrinterIcon size={16} />
+                {t.printBtn || 'Print Receipt'}
+              </button>
+
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleDownloadLedgerPDF}
+                style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
+              >
+                <DownloadIcon size={16} color="var(--primary)" />
+                Download PDF
+              </button>
+
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setShowBillModal(false)}
+                style={{ padding: '0.55rem 1.2rem', fontSize: '0.88rem' }}
+              >
+                {t.closeBtn || 'Close'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}

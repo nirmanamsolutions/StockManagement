@@ -9,11 +9,13 @@ import {
   RefreshCwIcon,
   FilterIcon,
   TagIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  PackageIcon
 } from '@animateicons/react/lucide';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { stockAPI } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
 export default function StockManagement({ modalState, setModalState, setActiveTab, t }) {
   const [stockList, setStockList] = useState([]);
@@ -136,7 +138,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     return 'general';
   };
 
-  // HTML2Canvas PDF Export Generator (100% Crisp Marathi Character Rendering)
+  // HTML2Canvas PDF Export Generator (100% Crisp Marathi Character Rendering + Multi-page support)
   const generatePDFReport = async () => {
     try {
       const template = document.getElementById('pdf-report-template');
@@ -157,9 +159,22 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
       pdf.save(`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (err) {
       console.error('Failed to generate PDF report:', err);
@@ -170,33 +185,67 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   return (
     <div style={{ maxWidth: '1140px', margin: '0 auto', padding: '0 1.25rem' }}>
       
-      {/* Top Header Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          {setActiveTab && (
-            <button
-              onClick={() => setActiveTab('home')}
-              className="btn-secondary"
-              style={{
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer'
-              }}
-              title={t.btnBack}
-            >
-              <ArrowLeftIcon size={16} color="var(--primary)" />
-              <span>{t.btnBack}</span>
-            </button>
-          )}
-          <div>
-            <h2 style={{ fontSize: '1.7rem', margin: 0, color: 'var(--text-heading)' }}>{t.stockTitle}</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>{t.stockSubtitle}</p>
-          </div>
+      {/* Floating Fixed Circular Back Button */}
+      {setActiveTab && (
+        <button
+          type="button"
+          className="no-print"
+          onClick={() => setActiveTab('home')}
+          style={{
+            position: 'fixed',
+            top: '5.25rem',
+            left: '1.25rem',
+            zIndex: 9999,
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            backgroundColor: '#ffffff',
+            color: 'var(--primary, #4f46e5)',
+            border: '1.5px solid var(--border-color, #e2e8f0)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.14)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.borderColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.boxShadow = '0 6px 18px rgba(79, 70, 229, 0.35)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#ffffff';
+            e.currentTarget.style.color = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.borderColor = 'var(--border-color, #e2e8f0)';
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.14)';
+          }}
+          title={t.btnBack || 'मुख्यपृष्ठावर जा'}
+        >
+          <ArrowLeftIcon size={22} />
+        </button>
+      )}
+
+      {/* Top Page Header Bar */}
+      <div className="no-print" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '1.25rem'
+      }}>
+        <div>
+          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+            <PackageIcon size={24} color="var(--primary)" />
+            {t.stockTitle || 'मालाचा साठा व्यवस्थापन (Stock Management)'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
+            {t.stockSubtitle || 'दुकानातील साहित्याचा साठा, खरेदी/विक्री भाव व्यवस्थापन'}
+          </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
@@ -268,7 +317,13 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
             </tr>
           </thead>
           <tbody>
-            {stockList.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan="6" style={{ padding: '2rem' }}>
+                  <LoadingSpinner text="मालाचा साठा लोड होत आहे..." />
+                </td>
+              </tr>
+            ) : stockList.length === 0 ? (
               <tr>
                 <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   {t.noStockFound}
@@ -411,11 +466,13 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   >
                     <option value="kg">{t.unitKg}</option>
                     <option value="g">{t.unitG}</option>
-                    <option value="pcs">{t.unitPcs}</option>
+                    <option value="unit">{t.unitUnit || 'unit'}</option>
                     <option value="liter">{t.unitLiter}</option>
-                    <option value="pkt">{t.unitPkt}</option>
-                    <option value="box">{t.unitBox}</option>
+                    <option value="ml">{t.unitMl || 'ml'}</option>
                     <option value="meter">{t.unitMeter}</option>
+                    <option value="quintal">{t.unitQuintal || 'quintal'}</option>
+                    <option value="brass">{t.unitBrass || 'brass'}</option>
+                    <option value="feet">{t.unitFeet || 'feet'}</option>
                   </select>
                 </div>
               </div>
@@ -550,7 +607,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
               <th style={{ padding: '0.75rem 1rem', width: '40px' }}>#</th>
               <th style={{ padding: '0.75rem 1rem' }}>{t.productName}</th>
               <th style={{ padding: '0.75rem 1rem' }}>{t.category}</th>
-              <th style={{ padding: '0.75rem 1rem' }}>{t.costPrice}</th>
               <th style={{ padding: '0.75rem 1rem' }}>{t.sellingPrice}</th>
               <th style={{ padding: '0.75rem 1rem' }}>{t.quantity}</th>
             </tr>
@@ -563,7 +619,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   <td style={{ padding: '0.65rem 1rem' }}>{index + 1}</td>
                   <td style={{ padding: '0.65rem 1rem', fontWeight: 700, color: '#1c1917' }}>{item.name}</td>
                   <td style={{ padding: '0.65rem 1rem' }}>{item.category || 'General Kirana'}</td>
-                  <td style={{ padding: '0.65rem 1rem', color: '#78716c' }}>₹{item.costPrice}</td>
                   <td style={{ padding: '0.65rem 1rem', fontWeight: 800, color: '#4338ca' }}>₹{item.sellingPrice}</td>
                   <td style={{ padding: '0.65rem 1rem', fontWeight: 800, color: isLowStock ? '#dc2626' : '#1c1917' }}>
                     {item.quantity} {item.unit}

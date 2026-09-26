@@ -27,8 +27,8 @@ export const stockAPI = {
 // Billing API Services
 export const billAPI = {
   create: (billData) => api.post('/bills', billData),
-  getAll: (status = '', search = '') =>
-    api.get(`/bills?status=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}`),
+  getAll: (status = '', search = '', date = '') =>
+    api.get(`/bills?status=${encodeURIComponent(status)}&search=${encodeURIComponent(search)}&date=${encodeURIComponent(date)}`),
   getById: (id) => api.get(`/bills/${id}`),
 };
 

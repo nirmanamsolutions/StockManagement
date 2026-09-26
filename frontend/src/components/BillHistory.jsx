@@ -20,25 +20,35 @@ import {
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { billAPI } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
 export default function BillHistory({ setActiveTab, t }) {
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState(''); // '', 'PAID', 'UNPAID'
-  
+  const [selectedDate, setSelectedDate] = useState(getTodayString());
+
   // Selected Bill Modal for viewing receipt
   const [selectedBill, setSelectedBill] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   useEffect(() => {
     fetchBills();
-  }, [statusFilter]);
+  }, [statusFilter, selectedDate]);
 
-  const fetchBills = async (query = searchQuery) => {
+  const fetchBills = async (query = searchQuery, dateVal = selectedDate) => {
     try {
       setLoading(true);
-      const res = await billAPI.getAll(statusFilter, query);
+      const res = await billAPI.getAll(statusFilter, query, dateVal);
       setBills(res.data.data || []);
     } catch (err) {
       console.error('Failed to fetch bill history:', err);
@@ -95,38 +105,67 @@ export default function BillHistory({ setActiveTab, t }) {
   return (
     <div style={{ maxWidth: '1140px', margin: '0 auto', padding: '0 1rem', paddingBottom: '4rem' }}>
       
-      {/* Top Header & Back Button */}
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          {setActiveTab && (
-            <button
-              onClick={() => setActiveTab('home')}
-              className="btn-secondary"
-              style={{
-                padding: '0.4rem 0.85rem',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                cursor: 'pointer'
-              }}
-              title={t.btnBack}
-            >
-              <ArrowLeftIcon size={16} color="var(--primary)" />
-              <span>{t.btnBack}</span>
-            </button>
-          )}
-          <div>
-            <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <HistoryIcon size={24} color="var(--primary)" />
-              {t.billHistoryTitle || 'Customer Bill History & Invoices'}
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
-              {t.billHistorySubtitle || 'Search past POS receipts, view payment records & print/download invoices'}
-            </p>
-          </div>
+      {/* Floating Fixed Circular Back Button */}
+      {setActiveTab && (
+        <button
+          type="button"
+          className="no-print"
+          onClick={() => setActiveTab('home')}
+          style={{
+            position: 'fixed',
+            top: '5.25rem',
+            left: '1.25rem',
+            zIndex: 9999,
+            width: '46px',
+            height: '46px',
+            borderRadius: '50%',
+            backgroundColor: '#ffffff',
+            color: 'var(--primary, #4f46e5)',
+            border: '1.5px solid var(--border-color, #e2e8f0)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.14)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.color = '#ffffff';
+            e.currentTarget.style.borderColor = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.boxShadow = '0 6px 18px rgba(79, 70, 229, 0.35)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#ffffff';
+            e.currentTarget.style.color = 'var(--primary, #4f46e5)';
+            e.currentTarget.style.borderColor = 'var(--border-color, #e2e8f0)';
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.14)';
+          }}
+          title={t.btnBack || 'मुख्यपृष्ठावर जा'}
+        >
+          <ArrowLeftIcon size={22} />
+        </button>
+      )}
+
+      {/* Page Header Bar */}
+      <div className="no-print" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '1.25rem'
+      }}>
+        <div>
+          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
+            <HistoryIcon size={24} color="var(--primary)" />
+            {t.billHistoryTitle || 'बिलांचा इतिहास (Bill History)'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
+            {t.billHistorySubtitle || 'जुनी पावत्या शोधा, पावती पुन्हा प्रिंट करा किंवा डाऊनलोड करा'}
+          </p>
         </div>
       </div>
 
@@ -214,16 +253,41 @@ export default function BillHistory({ setActiveTab, t }) {
             />
           </div>
 
+          {/* Single-Date Filter (Requirement 7) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <CalendarIcon size={14} color="var(--primary)" /> तारीख:
+            </span>
+            <input
+              type="date"
+              className="input-field"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{ height: '38px', padding: '0.35rem 0.6rem', fontSize: '0.82rem', fontWeight: 700 }}
+            />
+            {selectedDate && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setSelectedDate('')}
+                style={{ fontSize: '0.72rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                title="सर्व तारखांचे बील दाखवा (Show all dates)"
+              >
+                सर्व दाखवा
+              </button>
+            )}
+          </div>
+
           {/* Status Filter Pills */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              <FilterIcon size={14} color="var(--primary)" /> Status:
+              <FilterIcon size={14} color="var(--primary)" /> {t.statusLabel || 'स्थिती:'}
             </span>
 
             {[
-              { id: '', label: t.allStatus || 'All Bills' },
-              { id: 'PAID', label: t.paidStatus || 'Paid Bills' },
-              { id: 'UNPAID', label: t.unpaidStatus || 'Katha (Unpaid)' }
+              { id: '', label: t.allStatus || 'सर्व बील' },
+              { id: 'PAID', label: t.paidStatus || 'जमा बील' },
+              { id: 'UNPAID', label: t.unpaidStatus || 'उधारी बील' }
             ].map((f) => {
               const isActive = statusFilter === f.id;
               return (
@@ -256,13 +320,11 @@ export default function BillHistory({ setActiveTab, t }) {
       {/* Bill History List Table */}
       <div className="card-surface no-print" style={{ padding: '1rem', background: '#ffffff' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-            Loading bill transaction history...
-          </div>
+          <LoadingSpinner text="बिलांचा इतिहास लोड होत आहे..." />
         ) : bills.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
             <ReceiptIcon size={40} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
-            <p style={{ fontWeight: 600 }}>No bill records found matching criteria.</p>
+            <p style={{ fontWeight: 600 }}>{t.noBillRecords || 'कोणताही बिलाचा रेकॉर्ड सापडला नाही.'}</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -402,15 +464,16 @@ export default function BillHistory({ setActiveTab, t }) {
               className="printable-area"
               style={{
                 background: '#ffffff',
-                border: '1px solid #1c1917',
-                padding: '1.25rem',
+                border: '1.5px solid #000000',
+                padding: '1.75rem 2.25rem',
                 borderRadius: '0',
                 textAlign: 'left',
                 marginBottom: '1.25rem',
                 fontSize: '0.84rem',
                 color: '#000000',
                 fontFamily: 'monospace, "Courier New", sans-serif',
-                boxShadow: 'var(--shadow-subtle)'
+                boxShadow: 'var(--shadow-subtle)',
+                boxSizing: 'border-box'
               }}
             >
               {/* Shop Title */}
@@ -440,26 +503,26 @@ export default function BillHistory({ setActiveTab, t }) {
               </div>
 
               {/* Items Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                    <th style={{ padding: '0.25rem 0', width: '8%' }}>S/N</th>
-                    <th style={{ padding: '0.25rem 0' }}>Particulars</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'right' }}>Qty</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'center' }}>Unit</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'right' }}>Rate</th>
-                    <th style={{ padding: '0.25rem 0', textAlign: 'right' }}>AMT</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>S/N</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>Particulars</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedBill.items.map((item, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
-                      <td style={{ padding: '0.3rem 0' }}>{idx + 1}</td>
-                      <td style={{ padding: '0.3rem 0', fontWeight: 700 }}>{item.name}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'right' }}>{Number(item.quantity).toFixed(3)}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'center', textTransform: 'uppercase' }}>{item.unit}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'right' }}>{Number(item.sellingPrice).toFixed(2)}</td>
-                      <td style={{ padding: '0.3rem 0', textAlign: 'right', fontWeight: 800 }}>{Number(item.subtotal).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.quantity).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.sellingPrice).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.subtotal).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

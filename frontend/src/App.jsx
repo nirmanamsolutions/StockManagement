@@ -12,7 +12,15 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('kirana_admin_auth') === 'true';
   });
-  const [activeTab, setActiveTab] = useState('home'); // 'home', 'stock', 'billing', 'ledger'
+  const [activeTab, setActiveTabState] = useState(() => {
+    return localStorage.getItem('kirana_active_tab') || 'home';
+  });
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    localStorage.setItem('kirana_active_tab', tab);
+  };
+
   const [lang, setLangState] = useState(() => {
     return localStorage.getItem('kirana_lang') || 'mr';
   });
@@ -38,8 +46,9 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('kirana_admin_auth');
+    localStorage.removeItem('kirana_active_tab');
     setIsAuthenticated(false);
-    setActiveTab('home');
+    setActiveTabState('home');
   };
 
   // If not logged in, show the Admin Login Screen

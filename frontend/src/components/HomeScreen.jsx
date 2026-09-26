@@ -14,6 +14,7 @@ import {
   HistoryIcon
 } from '@animateicons/react/lucide';
 import { stockAPI, ledgerAPI } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
 export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
   const [stats, setStats] = useState({
@@ -82,9 +83,9 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
         </div>
       </div>
 
-      {/* Required 5 Action Buttons Grid */}
+      {/* Action Buttons Grid */}
       <div 
-        className="grid-5col"
+        className="grid-4col"
         style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', 
@@ -93,35 +94,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
         }}
       >
         
-        {/* 1. Add Stock */}
-        <div 
-          onClick={() => {
-            if (setStockModalState) setStockModalState({ open: true, mode: 'add' });
-            setActiveTab('stock');
-          }}
-          className="card-surface"
-          style={{
-            padding: '1.1rem 0.85rem',
-            textAlign: 'center',
-            cursor: 'pointer',
-            border: '1px solid var(--border-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '0.65rem',
-            background: '#ffffff',
-            color: 'var(--text-heading)',
-            boxShadow: 'var(--shadow-card)',
-            borderRadius: 'var(--radius-md)'
-          }}
-        >
-          <div style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.75rem', borderRadius: '50%', display: 'flex' }}>
-            <PlusIcon size={26} color="var(--primary)" />
-          </div>
-          <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>{t.btnAddStock}</span>
-        </div>
-
-        {/* 2. Edit Stock */}
+        {/* 1. Stock (Formerly Edit Stock) */}
         <div 
           onClick={() => {
             setActiveTab('stock');
@@ -148,7 +121,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>{t.btnEditStock}</span>
         </div>
 
-        {/* 3. Bill */}
+        {/* 2. Bill */}
         <div 
           onClick={() => setActiveTab('billing')}
           className="card-surface"
@@ -173,7 +146,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>{t.btnBill}</span>
         </div>
 
-        {/* 4. Ledger Management */}
+        {/* 3. Ledger Management */}
         <div 
           onClick={() => setActiveTab('ledger')}
           className="card-surface"
@@ -198,32 +171,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>{t.btnLedgerManagement}</span>
         </div>
 
-        {/* 5. List (Stock List) */}
-        <div 
-          onClick={() => setActiveTab('stock')}
-          className="card-surface"
-          style={{
-            padding: '1.1rem 0.85rem',
-            textAlign: 'center',
-            cursor: 'pointer',
-            border: '1px solid var(--border-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '0.65rem',
-            background: '#ffffff',
-            color: 'var(--text-heading)',
-            boxShadow: 'var(--shadow-card)',
-            borderRadius: 'var(--radius-md)'
-          }}
-        >
-          <div style={{ background: '#f3e8ff', color: '#8b5cf6', padding: '0.75rem', borderRadius: '50%', display: 'flex' }}>
-            <BoxesIcon size={26} color="#8b5cf6" />
-          </div>
-          <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>{t.btnStockList}</span>
-        </div>
-
-        {/* 6. Bill History */}
+        {/* 4. Bill History */}
         <div 
           onClick={() => setActiveTab('history')}
           className="card-surface"
@@ -245,7 +193,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '0.75rem', borderRadius: '50%', display: 'flex' }}>
             <HistoryIcon size={26} color="#0284c7" />
           </div>
-          <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>{t.btnBillHistory || '6. Bill History'}</span>
+          <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>{t.btnBillHistory || '4. Bill History'}</span>
         </div>
 
       </div>
@@ -278,7 +226,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           </div>
           <div style={{ marginTop: '0.35rem' }}>
             <h2 style={{ fontSize: '1.6rem', color: 'var(--text-heading)', fontWeight: 800, margin: '0 0 0.4rem 0', lineHeight: 1.1 }}>
-              {loading ? '...' : stats.totalStockCount}
+              {loading ? <LoadingSpinner inline size="sm" text="" /> : stats.totalStockCount}
             </h2>
             <div style={{
               display: 'inline-flex',
@@ -296,47 +244,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           </div>
         </div>
 
-        {/* KPI 2: Low Stock Alert */}
-        <div 
-          onClick={() => setShowLowStockModal(true)}
-          className="card-surface" 
-          style={{ 
-            padding: '1rem 1.1rem', 
-            background: stats.lowStockCount > 0 ? 'var(--warning-bg)' : '#ffffff', 
-            borderColor: stats.lowStockCount > 0 ? 'var(--warning-border)' : 'var(--border-color)',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}
-          title="Click to see list of low stock items requiring restock"
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ color: stats.lowStockCount > 0 ? 'var(--warning)' : 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 700 }}>{t.lowStockLabel}</span>
-            <TriangleAlertIcon size={20} color="var(--warning)" />
-          </div>
-          <div style={{ marginTop: '0.35rem' }}>
-            <h2 style={{ fontSize: '1.6rem', color: stats.lowStockCount > 0 ? 'var(--warning)' : 'var(--text-heading)', fontWeight: 800, margin: '0 0 0.4rem 0', lineHeight: 1.1 }}>
-              {loading ? '...' : stats.lowStockCount}
-            </h2>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              fontSize: '0.74rem',
-              color: stats.lowStockCount > 0 ? 'var(--warning)' : 'var(--text-muted)',
-              fontWeight: 700,
-              background: stats.lowStockCount > 0 ? '#fef3c7' : 'var(--bg-surface-raised)',
-              padding: '0.2rem 0.6rem',
-              borderRadius: '12px'
-            }}>
-              {t.clickToViewDetails}
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 3: Katha Customers */}
+        {/* KPI 2: Katha Customers */}
         <div 
           onClick={() => setActiveTab('ledger')}
           className="card-surface" 
@@ -357,7 +265,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           </div>
           <div style={{ marginTop: '0.35rem' }}>
             <h2 style={{ fontSize: '1.6rem', color: 'var(--text-heading)', fontWeight: 800, margin: '0 0 0.4rem 0', lineHeight: 1.1 }}>
-              {loading ? '...' : stats.totalLedgerCustomers}
+              {loading ? <LoadingSpinner inline size="sm" text="" /> : stats.totalLedgerCustomers}
             </h2>
             <div style={{
               display: 'inline-flex',
@@ -375,7 +283,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           </div>
         </div>
 
-        {/* KPI 4: Total Katha Due */}
+        {/* KPI 3: Total Katha Due */}
         <div 
           onClick={() => setShowDueModal(true)}
           className="card-surface" 
@@ -397,7 +305,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           </div>
           <div style={{ marginTop: '0.35rem' }}>
             <h2 style={{ fontSize: '1.6rem', color: stats.totalDueAmount > 0 ? 'var(--danger)' : 'var(--text-heading)', fontWeight: 800, margin: '0 0 0.4rem 0', lineHeight: 1.1 }}>
-              ₹{loading ? '...' : stats.totalDueAmount.toLocaleString('en-IN')}
+              {loading ? <LoadingSpinner inline size="sm" text="" /> : `₹${stats.totalDueAmount.toLocaleString('en-IN')}`}
             </h2>
             <div style={{
               display: 'inline-flex',

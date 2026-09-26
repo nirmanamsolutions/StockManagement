@@ -71,7 +71,10 @@ exports.getCustomerDetails = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
 
-    const history = await LedgerTransaction.find({ customerId: customer._id }).sort({ date: -1 }).lean();
+    const history = await LedgerTransaction.find({ customerId: customer._id })
+      .populate('billId')
+      .sort({ date: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,

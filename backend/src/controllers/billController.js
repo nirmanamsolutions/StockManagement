@@ -27,22 +27,17 @@ exports.createBill = async (req, res, next) => {
         });
       }
 
-      if (stockItem.quantity < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for '${stockItem.name}'. Available: ${stockItem.quantity} ${stockItem.unit}, Requested: ${item.quantity} ${stockItem.unit}`,
-        });
-      }
-
-      const itemSubtotal = stockItem.sellingPrice * Number(item.quantity);
+      const itemSellingPrice = item.sellingPrice !== undefined ? Number(item.sellingPrice) : stockItem.sellingPrice;
+      const itemUnit = item.unit || stockItem.unit;
+      const itemSubtotal = item.subtotal !== undefined ? Number(item.subtotal) : itemSellingPrice * Number(item.quantity);
       calculatedTotal += itemSubtotal;
 
       billItems.push({
         productId: stockItem._id,
         name: stockItem.name,
         quantity: Number(item.quantity),
-        unit: stockItem.unit,
-        sellingPrice: stockItem.sellingPrice,
+        unit: itemUnit,
+        sellingPrice: itemSellingPrice,
         subtotal: itemSubtotal,
       });
     }
@@ -120,7 +115,7 @@ exports.createBill = async (req, res, next) => {
 // @route   GET /api/bills
 exports.getAllBills = async (req, res, next) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, date } = req.query;
     let query = {};
 
     if (status) {
@@ -132,6 +127,13 @@ exports.getAllBills = async (req, res, next) => {
         { customerName: { $regex: search, $options: 'i' } },
         { customerPhone: { $regex: search, $options: 'i' } },
       ];
+    }
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+      query.createdAt = { $gte: startOfDay, $lte: endOfDay };
     }
 
     const bills = await Bill.find(query).sort({ createdAt: -1 });
