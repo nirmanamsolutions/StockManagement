@@ -48,7 +48,7 @@ const autoSeedData = async () => {
       const cust3 = await Customer.create({ name: 'गणेश देशमुख (Ganesh Deshmukh)', phone: '9423556677', totalDue: 0 });
 
       const bill1 = await Bill.create({
-        billId: `BILL-${Date.now().toString().slice(-6)}-1`,
+        billId: 'SRK101',
         customerName: cust1.name,
         customerPhone: cust1.phone,
         items: [

@@ -1,36 +1,34 @@
 const http = require('http');
 
-const API_BASE = 'http://localhost:5000/api';
-
 const sampleStocks = [
-  { name: 'बास्मती तांदूळ (Basmati Rice 1kg)', costPrice: 80, sellingPrice: 110, quantity: 50, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 10 },
-  { name: 'लोकवन गव्हाचे पीठ (Lokwan Wheat Flour 5kg)', costPrice: 160, sellingPrice: 210, quantity: 40, unit: 'unit', category: 'Grains & Pulses', minStockAlert: 8 },
-  { name: 'तुरीची डाळ (Toor Dal Premium)', costPrice: 140, sellingPrice: 175, quantity: 35, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 10 },
-  { name: 'हरभरा डाळ (Chana Dal)', costPrice: 65, sellingPrice: 85, quantity: 4, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 5 },
-  { name: 'मूग डाळ (Moong Dal)', costPrice: 90, sellingPrice: 115, quantity: 25, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 5 },
+  { name: 'लोकवन गहू', costPrice: 31, sellingPrice: 38, quantity: 150, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 20 },
+  { name: 'बासमती तांदूळ', costPrice: 85, sellingPrice: 110, quantity: 95, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 15 },
+  { name: 'इंद्रायणी तांदूळ', costPrice: 55, sellingPrice: 72, quantity: 150, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 25 },
+  { name: 'कोलम तांदूळ', costPrice: 48, sellingPrice: 62, quantity: 110, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 20 },
+  { name: 'गावरान तूर डाळ', costPrice: 145, sellingPrice: 175, quantity: 80, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 15 },
+  { name: 'हरभरा डाळ', costPrice: 68, sellingPrice: 88, quantity: 70, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 10 },
+  { name: 'मसूर डाळ', costPrice: 72, sellingPrice: 92, quantity: 65, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 10 },
+  { name: 'मूग डाळ', costPrice: 95, sellingPrice: 120, quantity: 50, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 10 },
+  { name: 'उडीद डाळ', costPrice: 105, sellingPrice: 132, quantity: 45, unit: 'kg', category: 'Grains & Pulses', minStockAlert: 8 },
 
-  { name: 'सुप्रिम १ लिटर (Supreme 1L Oil)', costPrice: 135, sellingPrice: 163, quantity: 60, unit: 'unit', category: 'Oils & Ghee', minStockAlert: 10 },
-  { name: 'सुप्रिम १५ लिटर (Supreme 15L Oil)', costPrice: 2100, sellingPrice: 2470, quantity: 12, unit: 'unit', category: 'Oils & Ghee', minStockAlert: 3 },
-  { name: 'अमूल शुद्ध तूप ५००ग्रॅम (Amul Pure Ghee 500g)', costPrice: 290, sellingPrice: 340, quantity: 20, unit: 'unit', category: 'Oils & Ghee', minStockAlert: 5 },
-  { name: 'फॉर्च्यून सरसो तेल (Fortune Mustard Oil 1L)', costPrice: 140, sellingPrice: 170, quantity: 3, unit: 'liter', category: 'Oils & Ghee', minStockAlert: 5 },
+  { name: 'शेंगदाणा शुद्ध तेल १लिटर', costPrice: 145, sellingPrice: 175, quantity: 60, unit: 'liter', category: 'Oils & Ghee', minStockAlert: 12 },
+  { name: 'सोयाबीन तेल १लिटर', costPrice: 115, sellingPrice: 138, quantity: 85, unit: 'liter', category: 'Oils & Ghee', minStockAlert: 15 },
+  { name: 'सूर्यफूल तेल १लिटर', costPrice: 125, sellingPrice: 148, quantity: 50, unit: 'liter', category: 'Oils & Ghee', minStockAlert: 10 },
+  { name: 'अमूल शुद्ध तूप ५००ग्रॅम', costPrice: 295, sellingPrice: 345, quantity: 25, unit: 'unit', category: 'Oils & Ghee', minStockAlert: 5 },
 
-  { name: 'काजू तुकडा २५०ग्रॅम (Cashew Nuts 250g)', costPrice: 180, sellingPrice: 240, quantity: 15, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 4 },
-  { name: 'बदाम अमरी ५००ग्रॅम (Badam Almonds 500g)', costPrice: 380, sellingPrice: 460, quantity: 12, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 3 },
-  { name: 'सुहाना गरम मसाला (Suhana Garam Masala)', costPrice: 30, sellingPrice: 40, quantity: 30, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 5 },
-  { name: 'खारे शेगा (Khare Shega)', costPrice: 100, sellingPrice: 135, quantity: 18, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 4 },
-  { name: 'मसाला वटणा (Masala Vatana)', costPrice: 75, sellingPrice: 100, quantity: 22, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 5 },
+  { name: 'सुहाना गरम मसाला ५०ग्रॅम', costPrice: 32, sellingPrice: 42, quantity: 60, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 10 },
+  { name: 'एव्हरेस्ट लाल तिखट १००ग्रॅम', costPrice: 48, sellingPrice: 60, quantity: 45, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 8 },
+  { name: 'काजू तुकडा २५०ग्रॅम', costPrice: 185, sellingPrice: 245, quantity: 20, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 5 },
+  { name: 'बदाम अमरी ५००ग्रॅम', costPrice: 370, sellingPrice: 460, quantity: 15, unit: 'unit', category: 'Spices & Dryfruits', minStockAlert: 4 },
 
-  { name: 'विक्रम चहा १०/- (Vikram Tea ₹10)', costPrice: 6.5, sellingPrice: 9.04, quantity: 100, unit: 'unit', category: 'Beverages & Snacks', minStockAlert: 20 },
-  { name: 'विक्रम चहा २०/- (Vikram Tea ₹20)', costPrice: 14, sellingPrice: 18, quantity: 80, unit: 'unit', category: 'Beverages & Snacks', minStockAlert: 15 },
-  { name: 'पारले-जी बिस्किट (Parle-G Biscuit Pkt)', costPrice: 8, sellingPrice: 10, quantity: 120, unit: 'unit', category: 'Beverages & Snacks', minStockAlert: 25 },
-  { name: 'रेड लेबल चहा ५००ग्रॅम (Red Label Tea 500g)', costPrice: 210, sellingPrice: 260, quantity: 25, unit: 'unit', category: 'Beverages & Snacks', minStockAlert: 6 },
+  { name: 'विक्रम चहा २५०ग्रॅम', costPrice: 85, sellingPrice: 105, quantity: 90, unit: 'unit', category: 'Beverages & Snacks', minStockAlert: 15 },
+  { name: 'पारले-जी बिस्किट', costPrice: 8.5, sellingPrice: 10, quantity: 150, unit: 'unit', category: 'Beverages & Snacks', minStockAlert: 30 },
 
-  { name: 'लक्स साबण १००ग्रॅम (Lux Soap 100g)', costPrice: 28, sellingPrice: 35, quantity: 45, unit: 'unit', category: 'Soaps & Cleaning', minStockAlert: 10 },
-  { name: 'व्हिल डिटर्जंट १किलो (Wheel Detergent 1kg)', costPrice: 60, sellingPrice: 75, quantity: 35, unit: 'unit', category: 'Soaps & Cleaning', minStockAlert: 8 },
-  { name: 'विम बार साबण (Vim Bar Soap)', costPrice: 8, sellingPrice: 10, quantity: 60, unit: 'unit', category: 'Soaps & Cleaning', minStockAlert: 15 },
+  { name: 'लक्स साबण १००ग्रॅम', costPrice: 28, sellingPrice: 35, quantity: 75, unit: 'unit', category: 'Soaps & Cleaning', minStockAlert: 15 },
+  { name: 'व्हिल डिटर्जंट पावडर १किलो', costPrice: 62, sellingPrice: 78, quantity: 60, unit: 'unit', category: 'Soaps & Cleaning', minStockAlert: 12 },
 
-  { name: 'चुरा तंबाकू (Chura Tobacco)', costPrice: 180, sellingPrice: 220, quantity: 10, unit: 'unit', category: 'General Kirana', minStockAlert: 2 },
-  { name: 'गूळ कोल्हापुरी (Jaggery Kolhapuri 1kg)', costPrice: 45, sellingPrice: 60, quantity: 40, unit: 'kg', category: 'General Kirana', minStockAlert: 8 },
+  { name: 'साखर उत्तम दर्जा', costPrice: 38, sellingPrice: 44, quantity: 200, unit: 'kg', category: 'General Kirana', minStockAlert: 30 },
+  { name: 'कोल्हापुरी गूळ १किलो', costPrice: 48, sellingPrice: 65, quantity: 85, unit: 'kg', category: 'General Kirana', minStockAlert: 15 },
 ];
 
 const postJSON = (path, body) => {
@@ -68,7 +66,7 @@ async function seedViaAPI() {
   
   try {
     const createdStockItems = [];
-    console.log('\n📦 Seeding Stock Products...');
+    console.log('\n📦 Seeding Marathi Stock Products...');
     for (const item of sampleStocks) {
       const res = await postJSON('/stock', item);
       if (res.data) {
@@ -78,43 +76,13 @@ async function seedViaAPI() {
     }
 
     console.log('\n👥 Seeding Katha Customers & Ledger Entries...');
-    const cust1 = await postJSON('/ledger/customers', { name: 'शामराव शिंदे (Shamrao Shinde)', phone: '9822114455' });
-    const cust2 = await postJSON('/ledger/customers', { name: 'सचिन पाटील (Sachin Patil)', phone: '9921979797' });
-    const cust3 = await postJSON('/ledger/customers', { name: 'गणेश देशमुख (Ganesh Deshmukh)', phone: '9423556677' });
-    console.log('  ✓ Created 3 Customer Katha Profiles.');
-
-    if (createdStockItems.length > 2) {
-      console.log('\n🧾 Creating Sample Bills...');
-      // 1. Unpaid Katha Bill
-      await postJSON('/bills', {
-        customerName: 'शामराव शिंदे (Shamrao Shinde)',
-        customerPhone: '9822114455',
-        items: [
-          { productId: createdStockItems[0]._id, quantity: 2 },
-          { productId: createdStockItems[5]._id, quantity: 1 }
-        ],
-        paymentStatus: 'UNPAID',
-        paymentType: 'KATHA',
-        amountPaid: 0
-      });
-
-      // 2. Paid Cash/UPI Bill
-      await postJSON('/bills', {
-        customerName: 'सचिन पाटील (Sachin Patil)',
-        customerPhone: '9921979797',
-        items: [
-          { productId: createdStockItems[1]._id, quantity: 1 }
-        ],
-        paymentStatus: 'PAID',
-        paymentType: 'UPI',
-        amountPaid: 210
-      });
-
-      console.log('  ✓ Sample Bills & Katha Auto-Posting Completed!');
-    }
+    const cust1 = await postJSON('/ledger/customers', { name: 'शामराव ज्ञानदेव शिंदे', phone: '9822114455' });
+    const cust2 = await postJSON('/ledger/customers', { name: 'सचिन रामचंद्र कदम', phone: '9921979797' });
+    const cust3 = await postJSON('/ledger/customers', { name: 'गणेश बापूराव देशमुख', phone: '9423556677' });
+    console.log('  ✓ Created Customer Katha Profiles.');
 
     console.log('\n==================================================');
-    console.log('🎉 DATABASE SUCCESSFULLY POPULATED WITH SAMPLE DATA!');
+    console.log('🎉 DATABASE POPULATED VIA API WITH PURE MARATHI DATA!');
     console.log('==================================================\n');
   } catch (err) {
     console.error('❌ Seeding via API error:', err);

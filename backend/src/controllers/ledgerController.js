@@ -174,3 +174,50 @@ exports.getWhatsAppReminder = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Add / increase customer due credit amount manually
+// @route   POST /api/ledger/add-due
+exports.addDueAmount = async (req, res, next) => {
+  try {
+    const { customerId, amount, note } = req.body;
+
+    if (!customerId || !amount || Number(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid customerId and positive amount are required',
+      });
+    }
+
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+    const dueAmt = round2(amount);
+
+    customer.totalDue = round2((customer.totalDue || 0) + dueAmt);
+    customer.zeroDueSince = null;
+    await customer.save();
+
+    const transaction = await LedgerTransaction.create({
+      customerId: customer._id,
+      type: 'DUE',
+      amount: dueAmt,
+      paymentMethod: 'N/A',
+      note: note || 'उधारी जोडली (Manual Credit)',
+      date: new Date(),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Credit of ₹${dueAmt} added successfully`,
+      data: {
+        customer,
+        transaction,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

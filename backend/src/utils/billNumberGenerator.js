@@ -1,10 +1,10 @@
 /**
- * Generates a unique Bill ID format: BILL-YYYYMMDD-XXXX
+ * Generates a unique 6-character Bill ID format: 3 Alphabets + 3 Digits (e.g. SRK101, SRK542)
  */
 const generateBillId = () => {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  return `BILL-${dateStr}-${randomSuffix}`;
+  const prefix = 'SRK'; // 3 Alphabets for Shivratna Kirana
+  const number = Math.floor(100 + Math.random() * 900); // 3 Digits (100-999)
+  return `${prefix}${number}`;
 };
 
 module.exports = generateBillId;
