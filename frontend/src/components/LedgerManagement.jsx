@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  SearchIcon, 
-  PlusIcon, 
-  PhoneIcon, 
-  CreditCardIcon, 
-  MessageCircleIcon, 
-  HistoryIcon, 
-  ArrowUpRightIcon, 
+import {
+  SearchIcon,
+  PlusIcon,
+  PhoneIcon,
+  CreditCardIcon,
+  MessageCircleIcon,
+  HistoryIcon,
+  ArrowUpRightIcon,
   ArrowDownRightIcon,
   ArrowLeftIcon,
   EyeIcon,
@@ -20,12 +20,15 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ledgerAPI, billAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
-import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
+import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput, sanitizePhoneInput, isValidPhone } from '../utils/formatters';
 
 export default function LedgerManagement({ setActiveTab, t }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Mobile View Switcher: 'list' (Customer Directory) vs 'details' (Selected Customer Katha Profile)
+  const [mobileLedgerView, setMobileLedgerView] = useState('list');
 
   // Selected customer for detail view
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
@@ -47,6 +50,11 @@ export default function LedgerManagement({ setActiveTab, t }) {
   const [payMethod, setPayMethod] = useState('CASH');
   const [payNote, setPayNote] = useState('');
 
+  // Add Due Modal
+  const [showAddDueModal, setShowAddDueModal] = useState(false);
+  const [dueAmount, setDueAmount] = useState('');
+  const [dueNote, setDueNote] = useState('');
+
   useEffect(() => {
     fetchCustomers();
   }, []);
@@ -58,9 +66,9 @@ export default function LedgerManagement({ setActiveTab, t }) {
       const list = res.data.data || [];
       setCustomers(list);
 
-      // Default select first customer if available & none selected
-      if (list.length > 0 && !selectedCustomerId) {
-        selectCustomer(list[0]._id);
+      // Default select first customer if available & none selected on desktop
+      if (list.length > 0 && !selectedCustomerId && window.innerWidth > 992) {
+        selectCustomer(list[0]._id, false);
       }
     } catch (err) {
       console.error('Failed to fetch ledger customers', err);
@@ -75,8 +83,11 @@ export default function LedgerManagement({ setActiveTab, t }) {
     fetchCustomers(val);
   };
 
-  const selectCustomer = async (id) => {
+  const selectCustomer = async (id, switchMobileTab = true) => {
     setSelectedCustomerId(id);
+    if (switchMobileTab) {
+      setMobileLedgerView('details');
+    }
     try {
       setDetailsLoading(true);
       const res = await ledgerAPI.getCustomerDetails(id);
@@ -147,6 +158,33 @@ export default function LedgerManagement({ setActiveTab, t }) {
     }
   };
 
+  const handleAddDue = async (e) => {
+    e.preventDefault();
+    const enteredAmt = parseFloat(sanitizeDecimalInput(dueAmount));
+    if (isNaN(enteredAmt) || enteredAmt <= 0) {
+      alert(t.enterValidPaymentAmount || 'कृपया योग्य रक्कम टाका!');
+      return;
+    }
+
+    try {
+      await ledgerAPI.addDue({
+        customerId: selectedCustomerId,
+        amount: enteredAmt,
+        note: dueNote || 'उधारी जोडली',
+      });
+
+      setShowAddDueModal(false);
+      setDueAmount('');
+      setDueNote('');
+
+      // Refresh customer details & list
+      selectCustomer(selectedCustomerId);
+      fetchCustomers(searchQuery);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add credit amount');
+    }
+  };
+
   // Marathi WhatsApp Link Trigger
   const handleSendWhatsAppReminder = async () => {
     if (!selectedCustomerId) return;
@@ -204,7 +242,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
   return (
     <div style={{ maxWidth: '1140px', margin: '0 auto', padding: '0 1.25rem' }}>
-      
+
       {/* Floating Fixed Circular Back Button */}
       {setActiveTab && (
         <button
@@ -252,21 +290,17 @@ export default function LedgerManagement({ setActiveTab, t }) {
       {/* Top Page Header Bar */}
       <div className="no-print" style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        marginBottom: '1.25rem'
+        justifyContent: 'center',
+        gap: '0.85rem',
+        marginBottom: '1.25rem',
+        textAlign: 'center'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-            <BookOpenIcon size={24} color="var(--primary)" />
-            {t.ledgerTitle || 'उधारी खाता (Katha Ledger)'}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
-            {t.ledgerSubtitle || 'ग्राहकांच्या उधारीचे व्यवस्थापन, जमा नोंद आणि व्हाट्सएप मेसेज'}
-          </p>
-        </div>
+        <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 800, textAlign: 'center' }}>
+          <BookOpenIcon size={26} color="var(--primary)" />
+          {t.ledgerTitle || 'उधारी'}
+        </h2>
 
         <button className="btn-primary" onClick={() => setShowAddModal(true)}>
           <PlusIcon size={18} color="#ffffff" />
@@ -276,9 +310,9 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
       {/* Main 2-Column Split Layout */}
       <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: '1.5rem' }}>
-        
+
         {/* Left Column: Customer Search & Directory */}
-        <div>
+        <div className={`ledger-list-column ${mobileLedgerView === 'details' ? 'hide-mobile' : ''}`}>
           {/* Search Input */}
           <div className="card-surface" style={{ padding: '0.85rem 1.2rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.65rem', background: '#ffffff' }}>
             <SearchIcon size={20} color="var(--text-muted)" />
@@ -324,15 +358,32 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <h4 style={{ fontSize: '0.92rem', margin: 0, color: 'var(--text-heading)', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whitespace: 'nowrap' }}>{c.name}</h4>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <PhoneIcon size={12} color="var(--primary)" /> {c.phone}
-                      </div>
+                      <a
+                        href={`tel:${c.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        title={`कॉल करा: ${c.phone}`}
+                        style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--primary)',
+                          fontWeight: 700,
+                          margin: '0.2rem 0 0 0',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          textDecoration: 'none'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                      >
+                        <PhoneIcon size={13} color="var(--primary)" />
+                        <span>{c.phone}</span>
+                      </a>
                     </div>
 
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <span style={{ 
-                        fontSize: '1rem', 
-                        fontWeight: 800, 
+                      <span style={{
+                        fontSize: '1rem',
+                        fontWeight: 800,
                         color: c.totalDue > 0 ? 'var(--danger)' : 'var(--success)',
                         display: 'block'
                       }}>
@@ -350,7 +401,26 @@ export default function LedgerManagement({ setActiveTab, t }) {
         </div>
 
         {/* Right Column: Customer Due Detail & Payment Ledger Timeline */}
-        <div className="card-surface" style={{ padding: '1.25rem 1.4rem', background: '#ffffff' }}>
+        <div className={`card-surface ledger-details-column ${mobileLedgerView === 'list' ? 'hide-mobile' : ''}`} style={{ padding: '1.25rem 1.4rem', background: '#ffffff' }}>
+
+          {/* Mobile Back to Customer List Button */}
+          <button
+            type="button"
+            className="btn-secondary no-print mobile-pos-tabs"
+            onClick={() => setMobileLedgerView('list')}
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              gap: '0.45rem',
+              marginBottom: '1rem',
+              fontSize: '0.82rem',
+              padding: '0.4rem 0.85rem'
+            }}
+          >
+            <ArrowLeftIcon size={16} />
+            <span>← ग्राहकांची यादी (Back to Customer List)</span>
+          </button>
+
           {detailsLoading ? (
             <LoadingSpinner text="व्यवहार इतिहास लोड होत आहे..." />
           ) : !customerDetails ? (
@@ -358,11 +428,11 @@ export default function LedgerManagement({ setActiveTab, t }) {
           ) : (
             <div>
               {/* Customer Profile Banner */}
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between', 
-                paddingBottom: '1rem', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: '1rem',
                 borderBottom: '1px solid var(--border-color)',
                 marginBottom: '1.1rem',
                 flexWrap: 'wrap',
@@ -370,8 +440,30 @@ export default function LedgerManagement({ setActiveTab, t }) {
               }}>
                 <div>
                   <h3 style={{ fontSize: '1.3rem', marginBottom: '0.15rem', color: 'var(--text-heading)' }}>{customerDetails.customer.name}</h3>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <PhoneIcon size={14} color="var(--primary)" /> {t.phoneNo}: <strong>{customerDetails.customer.phone}</strong>
+                  <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
+                    <span>{t.phoneNo}:</span>
+                    <a
+                      href={`tel:${customerDetails.customer.phone}`}
+                      className="btn-secondary"
+                      title={`थेट कॉल करा: ${customerDetails.customer.phone}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.25rem 0.65rem',
+                        borderRadius: '20px',
+                        fontSize: '0.82rem',
+                        fontWeight: 800,
+                        color: 'var(--primary)',
+                        borderColor: 'var(--primary)',
+                        textDecoration: 'none',
+                        background: 'var(--primary-light)'
+                      }}
+                    >
+                      <PhoneIcon size={14} color="var(--primary)" />
+                      <span>{customerDetails.customer.phone}</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.85 }}>(कॉल करा)</span>
+                    </a>
                   </div>
                 </div>
 
@@ -384,12 +476,39 @@ export default function LedgerManagement({ setActiveTab, t }) {
               </div>
 
               {/* Action Buttons for Selected Customer */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem', marginBottom: '1.25rem' }}>
+                <a
+                  href={`tel:${customerDetails.customer.phone}`}
+                  className="btn-primary"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '0.6rem 0.5rem',
+                    fontSize: '0.84rem',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  <PhoneIcon size={16} color="#ffffff" />
+                  <span>कॉल करा (Call)</span>
+                </a>
+
+                <button
+                  className="btn-danger"
+                  onClick={() => setShowAddDueModal(true)}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.6rem 0.5rem', fontSize: '0.84rem' }}
+                >
+                  <PlusIcon size={16} color="#ffffff" />
+                  {t.addDueBtn || 'उधारी वाढवा'}
+                </button>
+
                 <button
                   className="btn-success"
                   onClick={() => setShowPayModal(true)}
                   disabled={customerDetails.totalDue <= 0}
-                  style={{ width: '100%', justifyContent: 'center', padding: '0.6rem', fontSize: '0.88rem' }}
+                  style={{ width: '100%', justifyContent: 'center', padding: '0.6rem 0.5rem', fontSize: '0.84rem' }}
                 >
                   <CreditCardIcon size={16} color="#ffffff" />
                   {t.payDue}
@@ -398,14 +517,14 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 <button
                   className="btn-secondary"
                   onClick={handleSendWhatsAppReminder}
-                  style={{ 
-                    width: '100%', 
-                    justifyContent: 'center', 
-                    background: '#ecfdf5', 
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    background: '#ecfdf5',
                     color: '#047857',
                     borderColor: '#a7f3d0',
-                    padding: '0.6rem',
-                    fontSize: '0.88rem',
+                    padding: '0.6rem 0.5rem',
+                    fontSize: '0.84rem',
                     fontWeight: 700
                   }}
                 >
@@ -426,10 +545,11 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 ) : (
                   customerDetails.history.map((tx) => {
                     const isDue = tx.type === 'DUE';
+                    const hasBill = Boolean(tx.billId);
                     return (
                       <div
                         key={tx._id}
-                        onClick={() => isDue && handleViewBill(tx)}
+                        onClick={() => isDue && hasBill && handleViewBill(tx)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -440,10 +560,10 @@ export default function LedgerManagement({ setActiveTab, t }) {
                           marginBottom: '0.5rem',
                           borderLeft: `4px solid ${isDue ? 'var(--danger)' : 'var(--success)'}`,
                           gap: '0.75rem',
-                          cursor: isDue ? 'pointer' : 'default',
+                          cursor: isDue && hasBill ? 'pointer' : 'default',
                           transition: 'all 0.15s ease'
                         }}
-                        title={isDue ? 'ह्या व्यवहाराचे बील पहा (Click to view bill)' : ''}
+                        title={isDue && hasBill ? 'ह्या व्यवहाराचे बील पहा (Click to view bill)' : ''}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-heading)' }}>
@@ -451,7 +571,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                             <span>{isDue ? t.creditAddedLabel : `${t.paymentReceivedLabel} (${tx.paymentMethod})`}</span>
                           </div>
                           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.15rem 0 0 1.25rem' }}>
-                            {tx.note || t.noNotes || 'No notes'} • {new Date(tx.date).toLocaleString()}
+                            {tx.note || 'उधारी जोडली'} • {new Date(tx.date).toLocaleString()}
                           </p>
                         </div>
 
@@ -459,7 +579,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                           <span style={{ fontWeight: 800, fontSize: '1rem', color: isDue ? 'var(--danger)' : 'var(--success)' }}>
                             {isDue ? '+' : '-'}₹{Number(tx.amount || 0).toFixed(2)}
                           </span>
-                          {isDue && (
+                          {isDue && hasBill && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: '#ffffff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid var(--primary-light)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
                               <EyeIcon size={12} color="var(--primary)" /> बील पहा
                             </span>
@@ -624,6 +744,66 @@ export default function LedgerManagement({ setActiveTab, t }) {
         </div>
       )}
 
+      {/* Add Credit (Increase Udhari) Modal */}
+      {showAddDueModal && customerDetails && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(28, 25, 23, 0.6)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="card-surface" style={{ width: '100%', maxWidth: '440px', padding: '2rem', background: '#ffffff' }}>
+            <h3 style={{ marginBottom: '0.4rem', fontSize: '1.3rem', color: 'var(--danger)' }}>{t.addDueTitle || 'नवीन उधारी जोडणे'}</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.4rem' }}>
+              {t.customerLabel || 'Customer'}: <strong>{customerDetails.customer.name}</strong> ({t.currentDueLabel || 'Current Due'}: ₹{customerDetails.totalDue})
+            </p>
+
+            <form onSubmit={handleAddDue}>
+              <div style={{ marginBottom: '1.1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                  {t.amountLabel || 'रक्कम (₹)'} *
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  required
+                  placeholder="उदा. 150"
+                  value={dueAmount}
+                  onChange={(e) => setDueAmount(sanitizeDecimalInput(e.target.value))}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.6rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                  {t.reasonNoteLabel || 'कारणाचे नाव / नोट'}
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="उदा. दूध व किराणा सामान उधारी"
+                  value={dueNote}
+                  onChange={(e) => setDueNote(e.target.value)}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.85rem' }}>
+                <button type="button" className="btn-secondary" onClick={() => setShowAddDueModal(false)}>
+                  {t.cancelBtn}
+                </button>
+                <button type="submit" className="btn-danger">
+                  {t.confirmAddDueBtn || 'उधारी जोडा'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* VIEW CREDIT TRANSACTION BILL MODAL (Requirement 8) */}
       {showBillModal && selectedTxBill && (
         <div style={{
@@ -640,7 +820,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
           zIndex: 1000,
           padding: '1rem'
         }}>
-          
+
           <div className="card-surface" style={{
             background: '#ffffff',
             width: '100%',
@@ -651,7 +831,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
             maxHeight: '90vh',
             overflowY: 'auto'
           }}>
-            
+
             {/* Modal Header Bar */}
             <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-heading)' }}>
@@ -668,7 +848,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
             </div>
 
             {/* Printable Paper Container */}
-            <div 
+            <div
               id="ledger-bill-receipt-paper"
               className="printable-area"
               style={{

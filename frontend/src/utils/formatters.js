@@ -29,7 +29,10 @@ export const formatQuantity = (quantity, unit) => {
 
 export const formatAmount = (amount) => {
   const num = Number(amount || 0);
-  return num.toFixed(2);
+  if (isNaN(num)) return '0';
+  // Round up to next whole number if fractional decimal exists (e.g. 17.1 to 17.9 becomes 18)
+  const rounded = Math.ceil(num);
+  return rounded.toString();
 };
 
 // Input sanitizer for decimal values (max 2 decimal places allowed)

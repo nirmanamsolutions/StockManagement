@@ -38,6 +38,7 @@ export const ledgerAPI = {
   addCustomer: (data) => api.post('/ledger/customers', data),
   getCustomerDetails: (customerId) => api.get(`/ledger/history/${customerId}`),
   recordPayment: (paymentData) => api.post('/ledger/pay', paymentData),
+  addDue: (dueData) => api.post('/ledger/add-due', dueData),
   getWhatsAppReminder: (customerId, storeName = 'आमचे दुकान') =>
     api.get(`/ledger/whatsapp/${customerId}?storeName=${encodeURIComponent(storeName)}`),
 };

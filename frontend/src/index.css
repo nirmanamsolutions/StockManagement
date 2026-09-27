@@ -492,6 +492,99 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Universal Mobile Bottom Navigation Dock (<768px) */
+.mobile-bottom-dock {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-dock {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9995;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    padding: 0.35rem 0.5rem;
+    height: 60px;
+    align-items: center;
+  }
+
+  .mobile-bottom-dock-inner {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    width: 100%;
+    gap: 0.2rem;
+    align-items: center;
+  }
+
+  .mobile-dock-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0.3rem 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text-muted);
+  }
+
+  .mobile-dock-btn.active {
+    color: var(--primary);
+  }
+
+  .mobile-dock-btn .dock-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    border-radius: 12px;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-dock-btn.active .dock-icon-wrapper {
+    background: var(--primary-light, #e0e7ff);
+  }
+
+  .mobile-dock-btn.highlight-btn .dock-icon-wrapper {
+    background: linear-gradient(135deg, var(--primary, #4338ca), var(--primary-hover, #3730a3));
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(67, 56, 202, 0.35);
+  }
+
+  .mobile-dock-btn .dock-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    margin-top: 2px;
+    line-height: 1;
+  }
+
+  .mobile-dock-btn.active .dock-label {
+    font-weight: 800;
+  }
+
+  /* Responsive Adjustments for Floating Mobile POS Cart Switcher */
+  .mobile-pos-floating-bar {
+    bottom: 4.25rem !important;
+  }
+}
+
+/* Responsive Table Wrapper */
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Universal Screen Responsiveness Media Queries */
 @media (max-width: 1024px) {
   .grid-2col {
@@ -502,14 +595,29 @@ h1, h2, h3, h4, h5, h6 {
 /* Responsive Blinkit POS catalog + cart grid layout */
 .billing-pos-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 460px);
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 450px);
+  gap: 1.25rem;
   align-items: start;
+}
+
+.pos-products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
 }
 
 @media (max-width: 992px) {
   .billing-pos-grid {
     grid-template-columns: 1fr !important;
+  }
+  .mobile-pos-tabs {
+    display: flex !important;
+  }
+  .pos-catalog-column.hide-mobile,
+  .pos-cart-column.hide-mobile,
+  .ledger-list-column.hide-mobile,
+  .ledger-details-column.hide-mobile {
+    display: none !important;
   }
 }
 
@@ -522,12 +630,12 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr !important;
   }
 
-  /* Responsive Back Floating Button positioning on mobile */
-  .no-print[style*="position: fixed"] {
-    top: 4.5rem !important;
-    left: 0.65rem !important;
-    width: 40px !important;
-    height: 40px !important;
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .navbar-left-spacer {
+    display: none !important;
   }
 
   /* Ensure modal receipt paper fits mobile screens */
@@ -537,8 +645,24 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@media (max-width: 640px) {
+  .pos-products-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+
+  .navbar-shop-title {
+    font-size: 0.92rem !important;
+  }
+}
+
 @media (max-width: 480px) {
-  .grid-4col, .grid-5col {
+  .grid-4col {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem !important;
+  }
+
+  .grid-5col {
     grid-template-columns: 1fr !important;
   }
 

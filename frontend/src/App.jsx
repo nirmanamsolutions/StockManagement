@@ -6,6 +6,7 @@ import BillingManagement from './components/BillingManagement';
 import LedgerManagement from './components/LedgerManagement';
 import BillHistory from './components/BillHistory';
 import LoginPage from './components/LoginPage';
+import MobileBottomNav from './components/MobileBottomNav';
 import { translations } from './i18n/translations';
 
 export default function App() {
@@ -16,9 +17,12 @@ export default function App() {
     return localStorage.getItem('kirana_active_tab') || 'home';
   });
 
-  const setActiveTab = (tab) => {
+  const setActiveTab = (tab, pushHistory = true) => {
     setActiveTabState(tab);
     localStorage.setItem('kirana_active_tab', tab);
+    if (pushHistory) {
+      window.history.pushState({ tab }, '', `#${tab}`);
+    }
   };
 
   const [lang, setLangState] = useState(() => {
@@ -37,6 +41,21 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'light');
+
+    // Set initial history state
+    if (!window.history.state || !window.history.state.tab) {
+      window.history.replaceState({ tab: activeTab }, '', `#${activeTab}`);
+    }
+
+    // Handle browser back / forward button navigation
+    const handlePopState = (e) => {
+      const targetTab = e.state?.tab || 'home';
+      setActiveTabState(targetTab);
+      localStorage.setItem('kirana_active_tab', targetTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const handleLoginSuccess = () => {
@@ -64,7 +83,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', paddingBottom: '3.5rem', background: 'var(--bg-base)' }}>
+    <div style={{ minHeight: '100vh', paddingBottom: '5.5rem', background: 'var(--bg-base)' }}>
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -113,6 +132,12 @@ export default function App() {
           />
         )}
       </main>
+
+      <MobileBottomNav 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        t={t} 
+      />
     </div>
   );
 }

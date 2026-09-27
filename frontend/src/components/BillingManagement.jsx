@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  ShoppingCartIcon, 
-  CreditCardIcon, 
-  UserIcon, 
-  PhoneIcon, 
-  PlusIcon, 
+import {
+  ShoppingCartIcon,
+  CreditCardIcon,
+  UserIcon,
+  PhoneIcon,
+  PlusIcon,
   MinusIcon,
-  TrashIcon, 
-  PrinterIcon, 
+  TrashIcon,
+  PrinterIcon,
   CheckIcon,
   ArrowLeftIcon,
   SearchIcon,
@@ -27,7 +27,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { billAPI, stockAPI, ledgerAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
-import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
+import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput, sanitizePhoneInput, isValidPhone } from '../utils/formatters';
 
 // Unit normalization helper: converts 'pcs', 'pkt', 'packet', 'box', 'piece' into 'unit'
 const normalizeUnit = (u) => {
@@ -63,6 +63,12 @@ const getConvertibleUnits = (baseUnitStr) => {
   return [{ id: base, label: base }];
 };
 
+// Helper to clean bracketed English words from titles (e.g. "सुहाना गरम मसाला (Suhana Garam Masala)" -> "सुहाना गरम मसाला")
+const cleanDisplayName = (str) => {
+  if (!str) return '';
+  return String(str).replace(/\s*\([A-Za-z0-9\s₹\/-]+\)/g, '').trim();
+};
+
 export default function BillingManagement({ setActiveTab, t }) {
   // Stock Catalog & Filter State
   const [stockList, setStockList] = useState([]);
@@ -72,6 +78,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
   // Cart Items State: [{ productId, name, unit, sellingPrice, costPrice, quantity, subtotal, baseUnit }]
   const [cartItems, setCartItems] = useState([]);
+  const [mobilePosTab, setMobilePosTab] = useState('catalog'); // 'catalog' or 'cart'
 
   // Payment Mode State
   const [paymentStatus, setPaymentStatus] = useState('PAID'); // 'PAID' or 'UNPAID' (Katha)
@@ -198,12 +205,13 @@ export default function BillingManagement({ setActiveTab, t }) {
   const updateCartProduct = (product, newQty) => {
     const qty = parseFloat(newQty) || 0;
     const baseUnit = normalizeUnit(product.unit);
-    
+
     if (qty <= 0) {
       setCartItems(cartItems.filter((c) => c.productId !== product._id));
       return;
     }
 
+    const displayName = cleanDisplayName(product.name);
     const existingIndex = cartItems.findIndex((c) => c.productId === product._id);
     if (existingIndex > -1) {
       const updated = [...cartItems];
@@ -211,6 +219,7 @@ export default function BillingManagement({ setActiveTab, t }) {
       const subtotal = calculateItemSubtotal(qty, curItem.sellingPrice, curItem.unit, baseUnit);
       updated[existingIndex] = {
         ...curItem,
+        name: displayName,
         quantity: qty,
         subtotal: subtotal,
       };
@@ -221,7 +230,7 @@ export default function BillingManagement({ setActiveTab, t }) {
         ...cartItems,
         {
           productId: product._id,
-          name: product.name,
+          name: displayName,
           unit: baseUnit,
           baseUnit: baseUnit,
           costPrice: product.costPrice || 0,
@@ -328,17 +337,21 @@ export default function BillingManagement({ setActiveTab, t }) {
   // Submit Final Bill Generation
   const handleFinalSubmitBill = async () => {
     if (cartItems.length === 0) {
-      alert(t.cartEmpty || 'बिलामध्ये कोणताही माल जोडलेला नाही!');
+      alert(t.cartEmpty || 'बिलांमध्ये कोणताही माल जोडलेला नाही!');
       return;
     }
 
-    if (!customerName.trim() || !customerPhone.trim()) {
-      alert('ग्राहकाचे नाव आणि मोबाईल नंबर दोन्ही भरले पाहिजे! (Customer Name & Phone Number are compulsory)');
+    // Default customer name & phone for PAID bills if not entered by shopkeeper
+    const nameToUse = customerName.trim() || (paymentStatus === 'PAID' ? 'नियमित ग्राहक' : '');
+    const phoneToUse = customerPhone.trim() || (paymentStatus === 'PAID' ? '9999999999' : '');
+
+    if (paymentStatus === 'UNPAID' && (!nameToUse || !isValidPhone(phoneToUse))) {
+      alert('उधारी बिलासाठी ग्राहकाचे नाव आणि १० अंकांचा मोबाईल नंबर आवश्यक आहे! (Customer Name & 10-digit Phone required for Katha bill)');
       return;
     }
 
-    if (paymentStatus === 'UNPAID' && !isValidPhone(customerPhone)) {
-      alert('उधारी बिलासाठी ग्राहकाचा १० अंकांचा मोबाईल नंबर आवश्यक आहे! (10-digit phone required for Katha bill)');
+    if (phoneToUse && phoneToUse !== '9999999999' && !isValidPhone(phoneToUse)) {
+      alert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका! (Please enter a valid 10-digit mobile number)');
       return;
     }
 
@@ -346,11 +359,11 @@ export default function BillingManagement({ setActiveTab, t }) {
     const paidAmount = paymentStatus === 'PAID' ? totalBillAmount : 0;
 
     const payload = {
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
+      customerName: nameToUse,
+      customerPhone: phoneToUse,
       items: cartItems.map((item) => ({
         productId: item.productId,
-        name: item.name,
+        name: cleanDisplayName(item.name),
         unit: item.unit,
         sellingPrice: item.sellingPrice,
         quantity: item.quantity,
@@ -416,13 +429,13 @@ export default function BillingManagement({ setActiveTab, t }) {
   });
 
   return (
-    <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 1rem', paddingBottom: '5rem' }}>
-      
-      {/* Floating Fixed Circular Back Button */}
+    <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 0.75rem', paddingBottom: '5.5rem' }}>
+
+      {/* Floating Fixed Circular Back Button (Desktop only, hidden on mobile to prevent blocking content) */}
       {setActiveTab && (
         <button
           type="button"
-          className="no-print"
+          className="no-print hide-mobile"
           onClick={() => setActiveTab('home')}
           style={{
             position: 'fixed',
@@ -465,21 +478,17 @@ export default function BillingManagement({ setActiveTab, t }) {
       {/* Page Header Bar */}
       <div className="no-print" style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        marginBottom: '1.25rem'
+        justifyContent: 'center',
+        gap: '0.85rem',
+        marginBottom: '1.25rem',
+        textAlign: 'center'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-            <ShoppingCartIcon size={24} color="var(--primary)" />
-            {t.billingTitle || 'नवीन ग्राहक बिल (POS Billing)'}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
-            {t.billingSubtitle || 'साठ्यातून माल निवडा, दर/प्रमाण तपासा आणि पावती बनवा'}
-          </p>
-        </div>
+        <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 800, textAlign: 'center' }}>
+          <ShoppingCartIcon size={26} color="var(--primary)" />
+          {t.billingTitle || 'बिल '}
+        </h2>
 
         {cartItems.length > 0 && !createdBill && (
           <button
@@ -509,7 +518,7 @@ export default function BillingManagement({ setActiveTab, t }) {
             </p>
 
             {/* Printable Thermal Receipt Container */}
-            <div 
+            <div
               id="pos-bill-receipt-paper"
               className="printable-area"
               style={{
@@ -633,8 +642,8 @@ export default function BillingManagement({ setActiveTab, t }) {
                 style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                  <polyline points="9 22 9 12 15 12 15 22"/>
+                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
                 <span>{t.homeBtn || 'मुख्यपृष्ठ (Home)'}</span>
               </button>
@@ -653,15 +662,35 @@ export default function BillingManagement({ setActiveTab, t }) {
         </div>
       ) : (
         /* SPACIOUS 2-COLUMN LAYOUT: BLINKIT-STYLE PRODUCT CATALOG GRID (LEFT) + RIGHT SIDE LIVE CART LIST & CHECKOUT PANEL (RIGHT) */
-        <div className="no-print billing-pos-grid">
-          
-          {/* LEFT SIDE: PRODUCT CATALOG SEARCH & BLINKIT-STYLE PRODUCT CARDS GRID */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            
+        <div style={{ width: '100%' }}>
+          {/* Mobile Switcher Bar for Catalog vs Cart */}
+          <div className="mobile-pos-tabs no-print" style={{ display: 'none', gap: '0.65rem', marginBottom: '1.25rem' }}>
+            <button
+              type="button"
+              onClick={() => setMobilePosTab('catalog')}
+              className={mobilePosTab === 'catalog' ? 'btn-primary' : 'btn-secondary'}
+              style={{ flex: 1, justifyContent: 'center', padding: '0.55rem', fontSize: '0.85rem' }}
+            >
+              <PackageIcon size={16} /> 1. माल निवडा
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobilePosTab('cart')}
+              className={mobilePosTab === 'cart' ? 'btn-primary' : 'btn-secondary'}
+              style={{ flex: 1, justifyContent: 'center', padding: '0.55rem', fontSize: '0.85rem' }}
+            >
+              <ShoppingCartIcon size={16} /> 2. बिलातील यादी {cartItems.length > 0 && `(${cartItems.length})`}
+            </button>
+          </div>
+
+          <div className="no-print billing-pos-grid">
+            {/* LEFT SIDE: PRODUCT CATALOG SEARCH & BLINKIT-STYLE PRODUCT CARDS GRID */}
+            <div className={`pos-catalog-column ${mobilePosTab === 'cart' ? 'hide-mobile' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
             {/* Search Bar & Category Filters Toolbar */}
             <div className="card-surface" style={{ padding: '1rem 1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                
+
                 {/* Product Search Input */}
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <div style={{ position: 'absolute', left: '0.85rem', pointerEvents: 'none' }}>
@@ -682,7 +711,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <FilterIcon size={14} color="var(--primary)" /> प्रकार:
                   </span>
-                  
+
                   {[
                     { id: '', label: t.catAll || 'सर्व प्रकार' },
                     { id: 'Grains & Pulses', label: t.catGrains || 'धान्य व डाळी' },
@@ -730,25 +759,26 @@ export default function BillingManagement({ setActiveTab, t }) {
                 <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.noStockFound || 'कोणताही माल सापडला नाही.'}</p>
               </div>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
-                gap: '1rem',
-                maxHeight: 'calc(100vh - 240px)',
-                overflowY: 'auto',
-                paddingRight: '4px'
-              }}>
+              <div
+                className="pos-products-grid"
+                style={{
+                  maxHeight: 'calc(100vh - 240px)',
+                  overflowY: 'auto',
+                  paddingRight: '4px'
+                }}
+              >
                 {filteredProducts.map((product) => {
                   const cartQty = getCartQuantity(product._id);
                   const isLowStock = product.quantity <= (product.minStockAlert || 5);
                   const isOutOfStock = product.quantity <= 0;
+                  const displayName = cleanDisplayName(product.name);
 
                   return (
                     <div
                       key={product._id}
                       className="card-surface"
                       style={{
-                        padding: '1rem',
+                        padding: '0.85rem 0.75rem',
                         background: '#ffffff',
                         borderRadius: 'var(--radius-md)',
                         display: 'flex',
@@ -757,26 +787,27 @@ export default function BillingManagement({ setActiveTab, t }) {
                         position: 'relative',
                         border: cartQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
                         boxShadow: cartQty > 0 ? '0 4px 14px var(--primary-glow)' : 'var(--shadow-card)',
-                        transition: 'all 0.15s ease'
+                        transition: 'all 0.15s ease',
+                        minWidth: 0
                       }}
                     >
                       {/* Top Category Tag & Stock Status */}
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.35rem', marginBottom: '0.45rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.25rem', marginBottom: '0.45rem', flexWrap: 'wrap' }}>
                           <span style={{
-                            fontSize: '0.68rem',
+                            fontSize: '0.66rem',
                             background: 'var(--bg-surface-raised)',
                             color: 'var(--text-muted)',
-                            padding: '0.15rem 0.45rem',
+                            padding: '0.15rem 0.4rem',
                             borderRadius: '12px',
                             fontWeight: 700
                           }}>
                             {product.category || 'Kirana'}
                           </span>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
                             <span style={{
-                              fontSize: '0.72rem',
+                              fontSize: '0.7rem',
                               fontWeight: 700,
                               color: isOutOfStock ? 'var(--danger)' : (isLowStock ? '#d97706' : 'var(--success)')
                             }}>
@@ -792,14 +823,14 @@ export default function BillingManagement({ setActiveTab, t }) {
                                 border: 'none',
                                 background: '#e0e7ff',
                                 color: '#4338ca',
-                                padding: '0.15rem 0.45rem',
-                                borderRadius: '8px',
-                                fontSize: '0.68rem',
+                                padding: '0.12rem 0.35rem',
+                                borderRadius: '6px',
+                                fontSize: '0.65rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '0.2rem',
+                                gap: '0.15rem',
                                 transition: 'all 0.15s ease'
                               }}
                               title="दुकानातील साठा (Stock) बदला"
@@ -812,28 +843,30 @@ export default function BillingManagement({ setActiveTab, t }) {
 
                         {/* Product Name */}
                         <h4 style={{
-                          fontSize: '0.96rem',
+                          fontSize: '0.92rem',
                           fontWeight: 800,
                           color: 'var(--text-heading)',
                           marginBottom: '0.35rem',
-                          lineHeight: 1.25
+                          lineHeight: 1.25,
+                          wordBreak: 'break-word',
+                          overflowWrap: 'break-word'
                         }}>
-                          {product.name}
+                          {displayName}
                         </h4>
 
                         {/* Selling & Purchase Price */}
-                        <div style={{ marginBottom: '0.85rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                        <div style={{ marginBottom: '0.65rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.2rem' }}>
                           <div>
-                            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
                               ₹{Number(product.sellingPrice || 0).toFixed(2)}
                             </span>
-                            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>
+                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginLeft: '0.15rem' }}>
                               /{normalizeUnit(product.unit)}
                             </span>
                           </div>
 
                           {/* Purchase Price Label */}
-                          <div style={{ fontSize: '0.7rem', color: '#92400e', background: '#fef3c7', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 700 }}>
+                          <div style={{ fontSize: '0.68rem', color: '#92400e', background: '#fef3c7', padding: '0.15rem 0.35rem', borderRadius: '4px', fontWeight: 700 }}>
                             खरेदी: ₹{Number(product.costPrice || 0).toFixed(2)}
                           </div>
                         </div>
@@ -843,22 +876,23 @@ export default function BillingManagement({ setActiveTab, t }) {
                       <div>
                         {/* Weight Preset Pills for kg/g/liter items */}
                         {(normalizeUnit(product.unit) === 'kg' || normalizeUnit(product.unit) === 'g' || normalizeUnit(product.unit) === 'liter') && (
-                          <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.45rem' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.2rem', marginBottom: '0.45rem' }}>
                             {[0.25, 0.5, 1, 2].map((preset) => (
                               <button
                                 key={preset}
                                 type="button"
                                 onClick={() => handleWeightPreset(product, preset)}
                                 style={{
-                                  flex: 1,
+                                  width: '100%',
                                   padding: '0.2rem 0',
-                                  fontSize: '0.7rem',
+                                  fontSize: '0.66rem',
                                   fontWeight: 700,
                                   borderRadius: '4px',
                                   border: '1px solid var(--border-color)',
                                   background: cartQty === preset ? 'var(--primary-light)' : '#f8fafc',
                                   color: cartQty === preset ? 'var(--primary)' : 'var(--text-body)',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  textAlign: 'center'
                                 }}
                               >
                                 {preset}{product.unit === 'g' ? 'g' : product.unit === 'liter' ? 'L' : 'kg'}
@@ -968,10 +1002,10 @@ export default function BillingManagement({ setActiveTab, t }) {
           </div>
 
           {/* RIGHT SIDE: SPACIOUS STICKY LIVE CART LIST & CHECKOUT PANEL */}
-          <div style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            
+          <div className={`pos-cart-column ${mobilePosTab === 'catalog' ? 'hide-mobile' : ''}`} style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
             <div className="card-surface" style={{ padding: '1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)' }}>
-              
+
               {/* Cart Header */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-color)' }}>
                 <h3 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--text-heading)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1029,7 +1063,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
                         {/* Row 2: Editable Controls (Selling Price, Quantity, Unit, Subtotal) */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr 1.2fr', gap: '0.45rem', alignItems: 'center' }}>
-                          
+
                           {/* Selling Price */}
                           <div>
                             <label style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '2px' }}>
@@ -1148,7 +1182,7 @@ export default function BillingManagement({ setActiveTab, t }) {
               </label>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div 
+                <div
                   onClick={() => setPaymentStatus('PAID')}
                   style={{
                     border: paymentStatus === 'PAID' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
@@ -1166,7 +1200,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                   </strong>
                 </div>
 
-                <div 
+                <div
                   onClick={() => setPaymentStatus('UNPAID')}
                   style={{
                     border: paymentStatus === 'UNPAID' ? '2px solid var(--danger)' : '1px solid var(--border-color)',
@@ -1240,7 +1274,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                   <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
                     उधारीसाठी ग्राहक निवडा (Select Customer) *
                   </label>
-                  
+
                   <div style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.55rem' }}>
                     <input
                       type="text"
@@ -1328,12 +1362,13 @@ export default function BillingManagement({ setActiveTab, t }) {
                         मोबाईल नंबर *
                       </label>
                       <input
-                        type="text"
-                        required
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
                         className="input-field"
-                        placeholder="मोबाईल नंबर *"
+                        placeholder="१० अंकांचा मोबाईल नंबर *"
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(e) => setCustomerPhone(sanitizePhoneInput(e.target.value))}
                         style={{ fontSize: '0.82rem', height: '36px' }}
                       />
                     </div>
@@ -1366,6 +1401,42 @@ export default function BillingManagement({ setActiveTab, t }) {
 
           </div>
 
+          {/* Sticky Mobile Floating Cart Bar */}
+          {mobilePosTab === 'catalog' && cartItems.length > 0 && (
+            <div
+              className="mobile-pos-tabs no-print"
+              onClick={() => setMobilePosTab('cart')}
+              style={{
+                display: 'none',
+                position: 'fixed',
+                bottom: '1rem',
+                left: '1rem',
+                right: '1rem',
+                zIndex: 9999,
+                background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                color: '#ffffff',
+                padding: '0.85rem 1.2rem',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: '0 8px 24px rgba(67, 56, 202, 0.4)',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                <ShoppingCartIcon size={20} color="#ffffff" />
+                <span style={{ fontWeight: 800, fontSize: '0.92rem' }}>
+                  {cartItems.length} वस्तू जोडल्या • ₹{grandTotal.toFixed(2)}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem' }}>
+                <span>बिल पहा</span>
+                <ArrowRightIcon size={16} color="#ffffff" />
+              </div>
+            </div>
+          )}
+
+          </div>
         </div>
       )}
 

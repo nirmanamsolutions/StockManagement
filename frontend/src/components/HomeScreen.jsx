@@ -189,7 +189,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
       </div>
 
       {/* Summary KPI Cards */}
-      <h3 style={{ marginBottom: '0.75rem', color: 'var(--text-heading)', fontSize: '1.1rem', fontWeight: 800 }}>
+      <h3 style={{ marginBottom: '0.75rem', color: 'var(--text-heading)', fontSize: '1.1rem', fontWeight: 800, textAlign: 'center' }}>
         {t.storeStatusTitle}
       </h3>
 
@@ -457,9 +457,25 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
                   >
                     <div>
                       <h4 style={{ fontSize: '0.92rem', margin: 0, color: 'var(--text-heading)', fontWeight: 700 }}>{cust.name}</h4>
-                      <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.15rem 0 0 0' }}>
-                        {t.phoneNo}: <strong>{cust.phone}</strong>
-                      </p>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.15rem 0 0 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <span>{t.phoneNo}:</span>
+                        <a
+                          href={`tel:${cust.phone}`}
+                          title={`कॉल करा: ${cust.phone}`}
+                          style={{
+                            color: 'var(--primary)',
+                            fontWeight: 800,
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.2rem'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                        >
+                          📞 {cust.phone}
+                        </a>
+                      </div>
                     </div>
 
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>

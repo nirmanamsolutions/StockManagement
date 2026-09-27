@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  DownloadIcon, 
-  SearchIcon, 
-  TriangleAlertIcon, 
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  DownloadIcon,
+  SearchIcon,
+  TriangleAlertIcon,
   RefreshCwIcon,
   FilterIcon,
   TagIcon,
@@ -207,17 +207,17 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
         {isActive ? (
           sortDirection === 'asc' ? (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m18 15-6-6-6 6"/>
+              <path d="m18 15-6-6-6 6" />
             </svg>
           ) : (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m6 9 6 6 6-6"/>
+              <path d="m6 9 6 6 6-6" />
             </svg>
           )
         ) : (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m7 15 5 5 5-5"/>
-            <path d="m7 9 5-5 5 5"/>
+            <path d="m7 15 5 5 5-5" />
+            <path d="m7 9 5-5 5 5" />
           </svg>
         )}
       </span>
@@ -270,7 +270,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
 
   return (
     <div style={{ maxWidth: '1140px', margin: '0 auto', padding: '0 1.25rem' }}>
-      
+
       {/* Floating Fixed Circular Back Button */}
       {setActiveTab && (
         <button
@@ -318,28 +318,24 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       {/* Top Page Header Bar */}
       <div className="no-print" style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        marginBottom: '1.25rem'
+        justifyContent: 'center',
+        gap: '0.85rem',
+        marginBottom: '1.25rem',
+        textAlign: 'center'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-            <PackageIcon size={24} color="var(--primary)" />
-            {t.stockTitle || 'मालाचा साठा व्यवस्थापन (Stock Management)'}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
-            {t.stockSubtitle || 'दुकानातील साहित्याचा साठा, खरेदी/विक्री भाव व्यवस्थापन'}
-          </p>
-        </div>
+        <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 800, textAlign: 'center' }}>
+          <PackageIcon size={26} color="var(--primary)" />
+          {t.stockTitle || 'माल'}
+        </h2>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
           <button className="btn-secondary" onClick={generatePDFReport}>
             <DownloadIcon size={18} color="var(--primary)" />
             {t.exportPdf}
           </button>
-          
+
           <button className="btn-primary" onClick={openAddModal}>
             <PlusIcon size={18} color="#ffffff" />
             {t.btnAddStock}
@@ -509,8 +505,8 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                     </td>
 
                     <td style={{ padding: '1rem 1.2rem', whiteSpace: 'nowrap', minWidth: '135px' }}>
-                      <span style={{ 
-                        fontWeight: 800, 
+                      <span style={{
+                        fontWeight: 800,
                         color: isLowStock ? '#d97706' : 'var(--text-heading)',
                         background: '#f8fafc',
                         padding: '0.35rem 0.65rem',
@@ -674,9 +670,9 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                     required
                     placeholder={isIntegerUnit(formData.unit) ? "0" : "0.00"}
                     value={formData.quantity}
-                    onChange={(e) => setFormData({ 
-                      ...formData, 
-                      quantity: isIntegerUnit(formData.unit) ? sanitizeIntegerInput(e.target.value) : sanitizeDecimalInput(e.target.value) 
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      quantity: isIntegerUnit(formData.unit) ? sanitizeIntegerInput(e.target.value) : sanitizeDecimalInput(e.target.value)
                     })}
                   />
                 </div>

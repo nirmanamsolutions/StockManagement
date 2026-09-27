@@ -153,21 +153,17 @@ export default function BillHistory({ setActiveTab, t }) {
       {/* Page Header Bar */}
       <div className="no-print" style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        marginBottom: '1.25rem'
+        justifyContent: 'center',
+        gap: '0.85rem',
+        marginBottom: '1.25rem',
+        textAlign: 'center'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.45rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-            <HistoryIcon size={24} color="var(--primary)" />
-            {t.billHistoryTitle || 'बिलांचा इतिहास (Bill History)'}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
-            {t.billHistorySubtitle || 'जुनी पावत्या शोधा, पावती पुन्हा प्रिंट करा किंवा डाऊनलोड करा'}
-          </p>
-        </div>
+        <h2 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text-heading)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 800, textAlign: 'center' }}>
+          <HistoryIcon size={26} color="var(--primary)" />
+          {t.billHistoryTitle || 'जुनी बिलं'}
+        </h2>
       </div>
 
       {/* Summary KPI Cards */}
@@ -177,7 +173,7 @@ export default function BillHistory({ setActiveTab, t }) {
         <div className="card-surface" style={{ padding: '1rem 1.15rem', background: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-              {t.totalBillsCount || 'Total Bills'}
+              {t.totalBillsCount || 'एकूण बिलं'}
             </span>
             <div style={{ background: 'var(--primary-light)', padding: '0.35rem', borderRadius: '50%', display: 'flex' }}>
               <ReceiptIcon size={18} color="var(--primary)" />
@@ -192,7 +188,7 @@ export default function BillHistory({ setActiveTab, t }) {
         <div className="card-surface" style={{ padding: '1rem 1.15rem', background: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-              {t.totalCollection || 'Total Sales Revenue'}
+              {t.totalCollection || 'एकूण विक्री'}
             </span>
             <div style={{ background: 'var(--primary-light)', padding: '0.35rem', borderRadius: '50%', display: 'flex' }}>
               <BanknoteIcon size={18} color="var(--primary)" />
@@ -207,7 +203,7 @@ export default function BillHistory({ setActiveTab, t }) {
         <div className="card-surface" style={{ padding: '1rem 1.15rem', background: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-              Paid Collection (Instant)
+              {t.paidCollection || 'नगद / ऑनलाईन जमा'}
             </span>
             <div style={{ background: 'var(--success-bg)', padding: '0.35rem', borderRadius: '50%', display: 'flex' }}>
               <CheckIcon size={18} color="var(--success)" />
@@ -222,7 +218,7 @@ export default function BillHistory({ setActiveTab, t }) {
         <div className="card-surface" style={{ padding: '1rem 1.15rem', background: '#ffffff' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-              {t.totalKathaDue || 'Total Unpaid Katha'}
+              {t.totalKathaDue || 'एकूण उधारी'}
             </span>
             <div style={{ background: 'var(--danger-bg)', padding: '0.35rem', borderRadius: '50%', display: 'flex' }}>
               <BookOpenIcon size={18} color="var(--danger)" />
@@ -247,7 +243,7 @@ export default function BillHistory({ setActiveTab, t }) {
             <input
               type="text"
               className="input-field"
-              placeholder={t.searchBillPlaceholder || 'Search by Customer Name, Phone, or Bill ID...'}
+              placeholder={t.searchBillPlaceholder || 'ग्राहकाचे नाव, नंबर किंवा बिल नंबर शोधा...'}
               value={searchQuery}
               onChange={handleSearchChange}
               style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.88rem' }}
@@ -272,7 +268,7 @@ export default function BillHistory({ setActiveTab, t }) {
                 className="btn-secondary"
                 onClick={() => setSelectedDate('')}
                 style={{ fontSize: '0.72rem', padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                title="सर्व तारखांचे बील दाखवा (Show all dates)"
+                title="सर्व तारखांचे बील दाखवा"
               >
                 सर्व दाखवा
               </button>
@@ -286,9 +282,9 @@ export default function BillHistory({ setActiveTab, t }) {
             </span>
 
             {[
-              { id: '', label: t.allStatus || 'सर्व बील' },
-              { id: 'PAID', label: t.paidStatus || 'जमा बील' },
-              { id: 'UNPAID', label: t.unpaidStatus || 'उधारी बील' }
+              { id: '', label: t.allStatus || 'सर्व बिलं' },
+              { id: 'PAID', label: t.paidStatus || 'जमा बिलं' },
+              { id: 'UNPAID', label: t.unpaidStatus || 'उधारी बिलं' }
             ].map((f) => {
               const isActive = statusFilter === f.id;
               return (
@@ -332,22 +328,22 @@ export default function BillHistory({ setActiveTab, t }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  <th style={{ padding: '0.65rem 0.75rem' }}>Bill ID</th>
-                  <th style={{ padding: '0.65rem 0.75rem' }}>Date & Time</th>
-                  <th style={{ padding: '0.65rem 0.75rem' }}>Customer Details</th>
-                  <th style={{ padding: '0.65rem 0.75rem' }}>Items Purchased</th>
-                  <th style={{ padding: '0.65rem 0.75rem' }}>Status</th>
-                  <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>Total Amount</th>
-                  <th style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>Action</th>
+                  <th style={{ padding: '0.65rem 0.75rem' }}>बिल नंबर</th>
+                  <th style={{ padding: '0.65rem 0.75rem' }}>तारीख व वेळ</th>
+                  <th style={{ padding: '0.65rem 0.75rem' }}>ग्राहकाची माहिती</th>
+                  <th style={{ padding: '0.65rem 0.75rem' }}>खरेदी केलेले सामान</th>
+                  <th style={{ padding: '0.65rem 0.75rem' }}>पेमेंट स्थिती</th>
+                  <th style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>एकूण रक्कम</th>
+                  <th style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>पावती</th>
                 </tr>
               </thead>
               <tbody>
                 {bills.map((bill) => {
                   const isPaid = bill.paymentStatus === 'PAID';
-                  const firstItem = bill.items?.[0]?.name || 'Item';
+                  const firstItem = bill.items?.[0]?.name || 'सामान';
                   const extraCount = (bill.items?.length || 0) - 1;
                   const itemPreview = extraCount > 0 
-                    ? `${firstItem} (+${extraCount} more)` 
+                    ? `${firstItem} (+${extraCount} इतर)` 
                     : firstItem;
 
                   return (
@@ -360,7 +356,7 @@ export default function BillHistory({ setActiveTab, t }) {
 
                       {/* Date */}
                       <td style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        {new Date(bill.createdAt).toLocaleString()}
+                        {new Date(bill.createdAt).toLocaleString('mr-IN')}
                       </td>
 
                       {/* Customer */}
@@ -369,9 +365,25 @@ export default function BillHistory({ setActiveTab, t }) {
                           {bill.customerName}
                         </div>
                         {bill.customerPhone && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                            📞 {bill.customerPhone}
-                          </div>
+                          <a
+                            href={`tel:${bill.customerPhone}`}
+                            title={`कॉल करा: ${bill.customerPhone}`}
+                            style={{
+                              fontSize: '0.78rem',
+                              color: 'var(--primary)',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              textDecoration: 'none',
+                              marginTop: '0.15rem'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                          >
+                            <PhoneIcon size={12} color="var(--primary)" />
+                            <span>{bill.customerPhone}</span>
+                          </a>
                         )}
                       </td>
 
@@ -385,7 +397,7 @@ export default function BillHistory({ setActiveTab, t }) {
                       {/* Payment Status Badge */}
                       <td style={{ padding: '0.75rem' }}>
                         <span className={isPaid ? 'badge-paid' : 'badge-unpaid'}>
-                          {isPaid ? `PAID (${bill.paymentType || 'CASH'})` : 'KATHA (UNPAID)'}
+                          {isPaid ? `जमा (${bill.paymentType || 'रोख'})` : 'उधारी'}
                         </span>
                       </td>
 
@@ -403,7 +415,7 @@ export default function BillHistory({ setActiveTab, t }) {
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
                         >
                           <EyeIcon size={14} color="var(--primary)" />
-                          <span>{t.viewReceiptBtn || 'View Receipt'}</span>
+                          <span>{t.viewReceiptBtn || 'पावती पहा'}</span>
                         </button>
                       </td>
 
@@ -494,7 +506,13 @@ export default function BillHistory({ setActiveTab, t }) {
               <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '0.45rem 0', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                 <div>
                   <div><strong>NAME :</strong> {selectedBill.customerName}</div>
-                  <div><strong>PH :</strong> {selectedBill.customerPhone || ''}</div>
+                  <div>
+                    <strong>PH :</strong> {selectedBill.customerPhone ? (
+                      <a href={`tel:${selectedBill.customerPhone}`} style={{ color: '#000000', fontWeight: 800, textDecoration: 'underline' }}>
+                        {selectedBill.customerPhone}
+                      </a>
+                    ) : ''}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div><strong>Bill No. :</strong> {selectedBill.billId}</div>
