@@ -21,6 +21,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { billAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 export default function BillHistory({ setActiveTab, t }) {
   const getTodayString = () => {
@@ -198,7 +199,7 @@ export default function BillHistory({ setActiveTab, t }) {
             </div>
           </div>
           <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--primary)', fontWeight: 800 }}>
-            ₹{totalRevenue}
+            ₹{Number(totalRevenue || 0).toFixed(2)}
           </h3>
         </div>
 
@@ -213,7 +214,7 @@ export default function BillHistory({ setActiveTab, t }) {
             </div>
           </div>
           <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--success)', fontWeight: 800 }}>
-            ₹{totalPaidRevenue}
+            ₹{Number(totalPaidRevenue || 0).toFixed(2)}
           </h3>
         </div>
 
@@ -228,7 +229,7 @@ export default function BillHistory({ setActiveTab, t }) {
             </div>
           </div>
           <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--danger)', fontWeight: 800 }}>
-            ₹{totalKathaDue}
+            ₹{Number(totalKathaDue || 0).toFixed(2)}
           </h3>
         </div>
 
@@ -390,7 +391,7 @@ export default function BillHistory({ setActiveTab, t }) {
 
                       {/* Total Amount */}
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, fontSize: '1rem', color: 'var(--text-heading)' }}>
-                        ₹{bill.totalAmount}
+                        ₹{Number(bill.totalAmount || 0).toFixed(2)}
                       </td>
 
                       {/* View / Print Action Button */}
@@ -519,10 +520,10 @@ export default function BillHistory({ setActiveTab, t }) {
                     <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
                       <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
                       <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.quantity).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.sellingPrice).toFixed(2)}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.subtotal).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>

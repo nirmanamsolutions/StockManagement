@@ -17,10 +17,14 @@ const ledgerRoutes = require('./src/routes/ledgerRoutes');
 // Controllers
 const { cleanupPaidBills } = require('./src/controllers/billController');
 
+const runAutoCleanup = require('./src/utils/autoCleanup');
+
 const app = express();
 
-// Connect Database
-connectDB();
+// Connect Database & Run Auto Cleanup
+connectDB().then(() => {
+  runAutoCleanup();
+});
 
 // Middleware
 app.use(cors());
@@ -59,18 +63,11 @@ app.use('/api/ledger', ledgerRoutes);
 // Error Handling Middleware
 app.use(errorHandler);
 
-// Cron Job: Automatically clean up paid bills older than 30 days every night at midnight
+// Cron Job: Automatically clean up zero-due customers, bills, and payment history older than 30 days every night at midnight
 cron.schedule('0 0 * * *', async () => {
-  console.log('[Cron Job] Executing 30-day paid bill cleanup...');
+  console.log('[Cron Job] Executing 30-day retention auto-cleanup...');
   try {
-    const fakeReq = {};
-    const fakeRes = {
-      status: () => fakeRes,
-      json: (data) => console.log('[Cron Job Result]', data),
-    };
-    await cleanupPaidBills(fakeReq, fakeRes, (err) => {
-      if (err) console.error('[Cron Job Error]', err);
-    });
+    await runAutoCleanup();
   } catch (error) {
     console.error('[Cron Job Error]', error.message);
   }

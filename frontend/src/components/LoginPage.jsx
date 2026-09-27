@@ -24,8 +24,8 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
     setIsSubmitting(true);
 
     setTimeout(() => {
-      // Validate credentials strictly: username = 'admin', password = '1234'
-      if (username.trim().toLowerCase() === 'admin' && password === '1234') {
+      // Validate credentials strictly: username = '9763950797', password = 'kirana@123'
+      if (username.trim() === '9763950797' && password === 'kirana@123') {
         onLogin();
       } else {
         setErrorMsg(t.invalidCredentials || 'Invalid Admin Username or Password!');
@@ -35,8 +35,8 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
   };
 
   const handleAutofillDemo = () => {
-    setUsername('admin');
-    setPassword('1234');
+    setUsername('9763950797');
+    setPassword('kirana@123');
     setErrorMsg('');
   };
 
@@ -115,9 +115,10 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
                 type="text"
                 className="input-field"
                 required
-                placeholder="admin"
+                maxLength={10}
+                placeholder="9763950797"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 style={{ paddingLeft: '2.6rem', height: '42px' }}
                 autoComplete="username"
               />
@@ -216,7 +217,7 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
               color: 'var(--primary)'
             }}
           >
-            <KeyRoundIcon size={13} color="var(--primary)" /> Autofill Credentials (admin / 1234)
+            <KeyRoundIcon size={13} color="var(--primary)" /> Autofill Credentials (9763950797 / kirana@123)
           </button>
         </div>
 

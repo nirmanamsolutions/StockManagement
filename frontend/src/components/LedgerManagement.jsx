@@ -20,6 +20,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ledgerAPI, billAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 export default function LedgerManagement({ setActiveTab, t }) {
   const [customers, setCustomers] = useState([]);
@@ -94,6 +95,11 @@ export default function LedgerManagement({ setActiveTab, t }) {
       return;
     }
 
+    if (!isValidPhone(newCustPhone)) {
+      alert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका! (Please enter a valid 10-digit phone number)');
+      return;
+    }
+
     try {
       const res = await ledgerAPI.addCustomer({ name: newCustName, phone: newCustPhone });
       setShowAddModal(false);
@@ -108,15 +114,23 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
   const handleRecordPayment = async (e) => {
     e.preventDefault();
-    if (!payAmount || Number(payAmount) <= 0) {
+    const enteredAmt = Math.round((Number(payAmount) || 0) * 100) / 100;
+    const maxDue = Math.round((Number(customerDetails?.totalDue) || 0) * 100) / 100;
+
+    if (!payAmount || isNaN(enteredAmt) || enteredAmt <= 0) {
       alert('Please enter a valid payment amount');
+      return;
+    }
+
+    if (enteredAmt > maxDue) {
+      alert(`जमा रक्कम बाकी उधारीपेक्षा जास्त असू शकत नाही! (Payment amount ₹${enteredAmt.toFixed(2)} cannot exceed total due balance of ₹${maxDue.toFixed(2)})`);
       return;
     }
 
     try {
       await ledgerAPI.recordPayment({
         customerId: selectedCustomerId,
-        amount: Number(payAmount),
+        amount: enteredAmt,
         paymentMethod: payMethod,
         note: payNote || `Paid via ${payMethod}`,
       });
@@ -322,7 +336,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                         color: c.totalDue > 0 ? 'var(--danger)' : 'var(--success)',
                         display: 'block'
                       }}>
-                        ₹{c.totalDue}
+                        ₹{Number(c.totalDue || 0).toFixed(2)}
                       </span>
                       <span className={c.totalDue > 0 ? 'badge-unpaid' : 'badge-paid'} style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', marginTop: '0.2rem', display: 'inline-block' }}>
                         {c.totalDue > 0 ? t.dueStatusBadge : t.clearStatusBadge}
@@ -364,7 +378,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t.totalDue}</span>
                   <h2 style={{ fontSize: '1.8rem', color: customerDetails.totalDue > 0 ? 'var(--danger)' : 'var(--success)', margin: 0, fontWeight: 800 }}>
-                    ₹{customerDetails.totalDue}
+                    ₹{Number(customerDetails.totalDue || 0).toFixed(2)}
                   </h2>
                 </div>
               </div>
@@ -443,7 +457,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
                         <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
                           <span style={{ fontWeight: 800, fontSize: '1rem', color: isDue ? 'var(--danger)' : 'var(--success)' }}>
-                            {isDue ? '+' : '-'}₹{tx.amount}
+                            {isDue ? '+' : '-'}₹{Number(tx.amount || 0).toFixed(2)}
                           </span>
                           {isDue && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: '#ffffff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid var(--primary-light)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -500,9 +514,10 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   type="text"
                   className="input-field"
                   required
-                  placeholder="e.g. 9876543210"
+                  maxLength={10}
+                  placeholder="उदा. 9876543210 (10 Digits)"
                   value={newCustPhone}
-                  onChange={(e) => setNewCustPhone(e.target.value)}
+                  onChange={(e) => setNewCustPhone(sanitizePhoneInput(e.target.value))}
                 />
               </div>
 
@@ -545,14 +560,26 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 </label>
                 <input
                   type="number"
-                  step="any"
+                  step="0.01"
+                  min="0.01"
                   max={customerDetails.totalDue}
                   className="input-field"
                   required
-                  placeholder={`Max ₹${customerDetails.totalDue}`}
+                  placeholder={`Max ₹${Number(customerDetails.totalDue || 0).toFixed(2)}`}
                   value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const numVal = Number(val);
+                    if (val !== '' && !isNaN(numVal) && numVal > customerDetails.totalDue) {
+                      setPayAmount(String(Number(customerDetails.totalDue).toFixed(2)));
+                    } else {
+                      setPayAmount(val);
+                    }
+                  }}
                 />
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                  जास्तीत जास्त जमा रक्कम: <strong>₹{Number(customerDetails.totalDue || 0).toFixed(2)}</strong> (Max allowed: ₹{Number(customerDetails.totalDue || 0).toFixed(2)})
+                </span>
               </div>
 
               <div style={{ marginBottom: '1.1rem' }}>
@@ -701,10 +728,10 @@ export default function LedgerManagement({ setActiveTab, t }) {
                     <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
                       <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
                       <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.quantity).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.sellingPrice).toFixed(2)}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.subtotal).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>

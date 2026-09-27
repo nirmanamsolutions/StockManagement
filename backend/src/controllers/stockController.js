@@ -39,6 +39,8 @@ exports.getStockById = async (req, res, next) => {
   }
 };
 
+const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+
 // @desc    Add new stock item
 // @route   POST /api/stock
 exports.addStock = async (req, res, next) => {
@@ -54,12 +56,12 @@ exports.addStock = async (req, res, next) => {
 
     const newStock = await Stock.create({
       name,
-      costPrice: Number(costPrice),
-      sellingPrice: Number(sellingPrice),
-      quantity: Number(quantity),
-      unit: unit || 'pcs',
+      costPrice: round2(costPrice),
+      sellingPrice: round2(sellingPrice),
+      quantity: round2(quantity),
+      unit: unit || 'unit',
       category: category || 'General',
-      minStockAlert: minStockAlert ? Number(minStockAlert) : 5,
+      minStockAlert: minStockAlert ? round2(minStockAlert) : 5,
     });
 
     res.status(201).json({
@@ -84,12 +86,12 @@ exports.updateStock = async (req, res, next) => {
     }
 
     stockItem.name = name !== undefined ? name : stockItem.name;
-    stockItem.costPrice = costPrice !== undefined ? Number(costPrice) : stockItem.costPrice;
-    stockItem.sellingPrice = sellingPrice !== undefined ? Number(sellingPrice) : stockItem.sellingPrice;
-    stockItem.quantity = quantity !== undefined ? Number(quantity) : stockItem.quantity;
+    stockItem.costPrice = costPrice !== undefined ? round2(costPrice) : stockItem.costPrice;
+    stockItem.sellingPrice = sellingPrice !== undefined ? round2(sellingPrice) : stockItem.sellingPrice;
+    stockItem.quantity = quantity !== undefined ? round2(quantity) : stockItem.quantity;
     stockItem.unit = unit !== undefined ? unit : stockItem.unit;
     stockItem.category = category !== undefined ? category : stockItem.category;
-    stockItem.minStockAlert = minStockAlert !== undefined ? Number(minStockAlert) : stockItem.minStockAlert;
+    stockItem.minStockAlert = minStockAlert !== undefined ? round2(minStockAlert) : stockItem.minStockAlert;
 
     await stockItem.save();
 

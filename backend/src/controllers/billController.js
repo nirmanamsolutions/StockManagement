@@ -3,6 +3,7 @@ const Stock = require('../models/Stock');
 const Customer = require('../models/Customer');
 const LedgerTransaction = require('../models/LedgerTransaction');
 const generateBillId = require('../utils/billNumberGenerator');
+const runAutoCleanup = require('../utils/autoCleanup');
 
 // @desc    Create a new bill & update stock / ledger
 // @route   POST /api/bills
@@ -17,6 +18,8 @@ exports.createBill = async (req, res, next) => {
     let calculatedTotal = 0;
     const billItems = [];
 
+const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+
     // Step 1: Verify & prepare stock items
     for (const item of items) {
       const stockItem = await Stock.findById(item.productId);
@@ -27,15 +30,16 @@ exports.createBill = async (req, res, next) => {
         });
       }
 
-      const itemSellingPrice = item.sellingPrice !== undefined ? Number(item.sellingPrice) : stockItem.sellingPrice;
+      const itemSellingPrice = round2(item.sellingPrice !== undefined ? item.sellingPrice : stockItem.sellingPrice);
       const itemUnit = item.unit || stockItem.unit;
-      const itemSubtotal = item.subtotal !== undefined ? Number(item.subtotal) : itemSellingPrice * Number(item.quantity);
-      calculatedTotal += itemSubtotal;
+      const itemQty = round2(item.quantity);
+      const itemSubtotal = round2(item.subtotal !== undefined ? item.subtotal : itemSellingPrice * itemQty);
+      calculatedTotal = round2(calculatedTotal + itemSubtotal);
 
       billItems.push({
         productId: stockItem._id,
         name: stockItem.name,
-        quantity: Number(item.quantity),
+        quantity: itemQty,
         unit: itemUnit,
         sellingPrice: itemSellingPrice,
         subtotal: itemSubtotal,
@@ -45,14 +49,14 @@ exports.createBill = async (req, res, next) => {
     // Step 2: Deduct Stock
     for (const item of items) {
       await Stock.findByIdAndUpdate(item.productId, {
-        $inc: { quantity: -Number(item.quantity) },
+        $inc: { quantity: -round2(item.quantity) },
       });
     }
 
     const billId = generateBillId();
     const isPaid = paymentStatus === 'PAID';
-    const finalAmountPaid = isPaid ? calculatedTotal : Number(amountPaid || 0);
-    const amountDue = calculatedTotal - finalAmountPaid;
+    const finalAmountPaid = isPaid ? calculatedTotal : round2(amountPaid || 0);
+    const amountDue = round2(calculatedTotal - finalAmountPaid);
 
     // Step 3: Create Bill Record
     const newBill = await Bill.create({
@@ -87,7 +91,10 @@ exports.createBill = async (req, res, next) => {
       }
 
       // Add to Customer Total Due
-      customer.totalDue += amountDue;
+      customer.totalDue = round2(customer.totalDue + amountDue);
+      if (customer.totalDue > 0) {
+        customer.zeroDueSince = null;
+      }
       await customer.save();
 
       // Log Ledger Transaction
@@ -115,6 +122,7 @@ exports.createBill = async (req, res, next) => {
 // @route   GET /api/bills
 exports.getAllBills = async (req, res, next) => {
   try {
+    await runAutoCleanup();
     const { status, search, date } = req.query;
     let query = {};
 
@@ -165,15 +173,15 @@ exports.getBillById = async (req, res, next) => {
 // @route   DELETE /api/bills/cleanup-paid
 exports.cleanupPaidBills = async (req, res, next) => {
   try {
+    await runAutoCleanup();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const result = await Bill.deleteMany({
-      paymentStatus: 'PAID',
-      paidAt: { $lt: thirtyDaysAgo },
+      createdAt: { $lt: thirtyDaysAgo },
     });
 
     res.status(200).json({
       success: true,
-      message: `Cleaned up ${result.deletedCount} paid bills older than 30 days`,
+      message: `Cleaned up bills older than 30 days`,
       deletedCount: result.deletedCount,
     });
   } catch (error) {

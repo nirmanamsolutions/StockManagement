@@ -27,6 +27,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { billAPI, stockAPI, ledgerAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 // Unit normalization helper: converts 'pcs', 'pkt', 'packet', 'box', 'piece' into 'unit'
 const normalizeUnit = (u) => {
@@ -255,8 +256,12 @@ export default function BillingManagement({ setActiveTab, t }) {
       let newQuantity = item.quantity;
       let newUnit = item.unit;
 
-      if (field === 'sellingPrice') newSellingPrice = parseFloat(value) || 0;
-      if (field === 'quantity') newQuantity = parseFloat(value) || 0;
+      if (field === 'sellingPrice') newSellingPrice = parseFloat(sanitizeDecimalInput(value)) || 0;
+      if (field === 'quantity') {
+        const isInt = isIntegerUnit(item.unit);
+        const clean = isInt ? sanitizeIntegerInput(value) : sanitizeDecimalInput(value);
+        newQuantity = parseFloat(clean) || 0;
+      }
       if (field === 'unit') newUnit = value;
 
       const subtotal = calculateItemSubtotal(newQuantity, newSellingPrice, newUnit, item.baseUnit);
@@ -288,6 +293,11 @@ export default function BillingManagement({ setActiveTab, t }) {
     e.preventDefault();
     if (!newCustName.trim() || !newCustPhone.trim()) {
       alert(t.namePhoneRequired || 'Name and Phone are required!');
+      return;
+    }
+
+    if (!isValidPhone(newCustPhone)) {
+      alert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका! (Please enter a valid 10-digit phone number)');
       return;
     }
 
@@ -324,6 +334,11 @@ export default function BillingManagement({ setActiveTab, t }) {
 
     if (!customerName.trim() || !customerPhone.trim()) {
       alert('ग्राहकाचे नाव आणि मोबाईल नंबर दोन्ही भरले पाहिजे! (Customer Name & Phone Number are compulsory)');
+      return;
+    }
+
+    if (paymentStatus === 'UNPAID' && !isValidPhone(customerPhone)) {
+      alert('उधारी बिलासाठी ग्राहकाचा १० अंकांचा मोबाईल नंबर आवश्यक आहे! (10-digit phone required for Katha bill)');
       return;
     }
 
@@ -553,10 +568,10 @@ export default function BillingManagement({ setActiveTab, t }) {
                     <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
                       <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
                       <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.quantity).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.sellingPrice).toFixed(2)}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{Number(item.subtotal).toFixed(2)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -638,7 +653,7 @@ export default function BillingManagement({ setActiveTab, t }) {
         </div>
       ) : (
         /* SPACIOUS 2-COLUMN LAYOUT: BLINKIT-STYLE PRODUCT CATALOG GRID (LEFT) + RIGHT SIDE LIVE CART LIST & CHECKOUT PANEL (RIGHT) */
-        <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(380px, 460px)', gap: '1.5rem', alignItems: 'start' }}>
+        <div className="no-print billing-pos-grid">
           
           {/* LEFT SIDE: PRODUCT CATALOG SEARCH & BLINKIT-STYLE PRODUCT CARDS GRID */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -765,7 +780,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                               fontWeight: 700,
                               color: isOutOfStock ? 'var(--danger)' : (isLowStock ? '#d97706' : 'var(--success)')
                             }}>
-                              {isOutOfStock ? 'साठा ०' : `साठा: ${Number(product.quantity).toFixed(2)} ${normalizeUnit(product.unit)}`}
+                              {isOutOfStock ? 'साठा ०' : `साठा: ${formatQuantity(product.quantity, product.unit)} ${normalizeUnit(product.unit)}`}
                             </span>
                             <button
                               type="button"
@@ -810,7 +825,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                         <div style={{ marginBottom: '0.85rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                           <div>
                             <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
-                              ₹{product.sellingPrice}
+                              ₹{Number(product.sellingPrice || 0).toFixed(2)}
                             </span>
                             <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginLeft: '0.2rem' }}>
                               /{normalizeUnit(product.unit)}
@@ -819,7 +834,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
                           {/* Purchase Price Label */}
                           <div style={{ fontSize: '0.7rem', color: '#92400e', background: '#fef3c7', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 700 }}>
-                            खरेदी: ₹{product.costPrice || 0}
+                            खरेदी: ₹{Number(product.costPrice || 0).toFixed(2)}
                           </div>
                         </div>
                       </div>
@@ -917,7 +932,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                               alignItems: 'center',
                               gap: '0.2rem'
                             }}>
-                              <span>{cartQty}</span>
+                              <span>{formatQuantity(cartQty, product.unit)}</span>
                               <span style={{ fontSize: '0.76rem', opacity: 0.85, fontWeight: 600 }}>{product.unit}</span>
                             </div>
 
@@ -1022,7 +1037,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                             </label>
                             <input
                               type="number"
-                              step="any"
+                              step="0.01"
                               value={item.sellingPrice}
                               onChange={(e) => handleUpdateCartItemField(item.productId, 'sellingPrice', e.target.value)}
                               style={{
@@ -1045,8 +1060,8 @@ export default function BillingManagement({ setActiveTab, t }) {
                             </label>
                             <input
                               type="number"
-                              step="any"
-                              min="0.001"
+                              step={isIntegerUnit(item.unit) ? "1" : "0.01"}
+                              min={isIntegerUnit(item.unit) ? "1" : "0.01"}
                               value={item.quantity}
                               onChange={(e) => handleUpdateCartItemField(item.productId, 'quantity', e.target.value)}
                               style={{
@@ -1210,10 +1225,11 @@ export default function BillingManagement({ setActiveTab, t }) {
                       <input
                         type="text"
                         required
+                        maxLength={10}
                         className="input-field"
-                        placeholder="उदा. 9822XXXXXX *"
+                        placeholder="१० अंकांचा मोबाईल नंबर *"
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(e) => setCustomerPhone(sanitizePhoneInput(e.target.value))}
                         style={{ fontSize: '0.82rem', height: '38px' }}
                       />
                     </div>
@@ -1261,10 +1277,11 @@ export default function BillingManagement({ setActiveTab, t }) {
                       <input
                         type="text"
                         required
+                        maxLength={10}
                         className="input-field"
-                        placeholder="फोन नंबर *"
+                        placeholder="१० अंकांचा फोन नंबर *"
                         value={newCustPhone}
-                        onChange={(e) => setNewCustPhone(e.target.value)}
+                        onChange={(e) => setNewCustPhone(sanitizePhoneInput(e.target.value))}
                         style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.5rem' }}
                       />
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>

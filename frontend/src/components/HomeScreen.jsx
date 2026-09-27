@@ -71,17 +71,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
   return (
     <div style={{ maxWidth: '1140px', margin: '0 auto', padding: '0 1rem' }}>
       
-      {/* Action Center Title */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem', color: 'var(--text-heading)', fontWeight: 800, margin: 0 }}>
-            {t.actionCenterTitle}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '0.1rem' }}>
-            {t.actionCenterSubtitle}
-          </p>
-        </div>
-      </div>
+
 
       {/* Action Buttons Grid */}
       <div 
@@ -305,7 +295,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           </div>
           <div style={{ marginTop: '0.35rem' }}>
             <h2 style={{ fontSize: '1.6rem', color: stats.totalDueAmount > 0 ? 'var(--danger)' : 'var(--text-heading)', fontWeight: 800, margin: '0 0 0.4rem 0', lineHeight: 1.1 }}>
-              {loading ? <LoadingSpinner inline size="sm" text="" /> : `₹${stats.totalDueAmount.toLocaleString('en-IN')}`}
+              {loading ? <LoadingSpinner inline size="sm" text="" /> : `₹${Number(stats.totalDueAmount || 0).toFixed(2)}`}
             </h2>
             <div style={{
               display: 'inline-flex',
@@ -318,7 +308,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
               padding: '0.2rem 0.6rem',
               borderRadius: '12px'
             }}>
-              {t.clickToViewDetails}
+              {t.clickToViewDetails} <ArrowRightIcon size={12} />
             </div>
           </div>
         </div>

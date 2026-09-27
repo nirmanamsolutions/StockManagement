@@ -24,9 +24,9 @@ const stockSchema = new mongoose.Schema(
     },
     unit: {
       type: String,
-      required: [true, 'Quantity unit (e.g. kg, g, pcs, liter) is required'],
+      required: [true, 'Quantity unit (e.g. kg, g, unit, liter) is required'],
       trim: true,
-      default: 'pcs',
+      default: 'unit',
     },
     category: {
       type: String,

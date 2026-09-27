@@ -1,11 +1,13 @@
 const Customer = require('../models/Customer');
 const LedgerTransaction = require('../models/LedgerTransaction');
 const generateWhatsAppLink = require('../utils/whatsapp');
+const runAutoCleanup = require('../utils/autoCleanup');
 
 // @desc    Get all ledger customers or search by name/phone
 // @route   GET /api/ledger/customers
 exports.getCustomers = async (req, res, next) => {
   try {
+    await runAutoCleanup();
     const { search } = req.query;
     let query = {};
 
@@ -50,6 +52,7 @@ exports.addCustomer = async (req, res, next) => {
       name: name.trim(),
       phone: phone.trim(),
       totalDue: 0,
+      zeroDueSince: new Date(),
     });
 
     res.status(201).json({
@@ -66,6 +69,7 @@ exports.addCustomer = async (req, res, next) => {
 // @route   GET /api/ledger/history/:customerId
 exports.getCustomerDetails = async (req, res, next) => {
   try {
+    await runAutoCleanup();
     const customer = await Customer.findById(req.params.customerId).lean();
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found' });
@@ -107,10 +111,24 @@ exports.recordPayment = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
 
-    const payAmount = Number(amount);
+    const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+    const payAmount = round2(amount);
+    const currentDue = round2(customer.totalDue);
+
+    if (payAmount > currentDue) {
+      return res.status(400).json({
+        success: false,
+        message: `Payment amount (₹${payAmount.toFixed(2)}) cannot exceed customer total due balance of ₹${currentDue.toFixed(2)}`,
+      });
+    }
 
     // Subtract from total due (cannot go below 0)
-    customer.totalDue = Math.max(0, customer.totalDue - payAmount);
+    customer.totalDue = round2(Math.max(0, currentDue - payAmount));
+    if (customer.totalDue === 0) {
+      customer.zeroDueSince = new Date();
+    } else {
+      customer.zeroDueSince = null;
+    }
     await customer.save();
 
     // Log transaction

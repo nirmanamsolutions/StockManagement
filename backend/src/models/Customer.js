@@ -12,11 +12,16 @@ const customerSchema = new mongoose.Schema(
       required: [true, 'Customer phone number is required'],
       trim: true,
       unique: true,
+      match: [/^\d{10}$/, 'Customer phone number must be exactly 10 digits'],
     },
     totalDue: {
       type: Number,
       default: 0,
       min: [0, 'Total due cannot be negative'],
+    },
+    zeroDueSince: {
+      type: Date,
+      default: Date.now,
     },
   },
   {

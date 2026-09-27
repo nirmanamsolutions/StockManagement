@@ -17,7 +17,7 @@ const billItemSchema = new mongoose.Schema({
   },
   unit: {
     type: String,
-    default: 'pcs',
+    default: 'unit',
   },
   sellingPrice: {
     type: Number,

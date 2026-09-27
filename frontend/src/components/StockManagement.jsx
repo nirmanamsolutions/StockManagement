@@ -16,6 +16,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { stockAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 export default function StockManagement({ modalState, setModalState, setActiveTab, t }) {
   const [stockList, setStockList] = useState([]);
@@ -23,6 +24,10 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Column Sorting State
+  const [sortField, setSortField] = useState('name');
+  const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
 
   // Modal form state
   const [showModal, setShowModal] = useState(false);
@@ -102,11 +107,18 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    const payload = {
+      ...formData,
+      costPrice: Math.round((Number(formData.costPrice) || 0) * 100) / 100,
+      sellingPrice: Math.round((Number(formData.sellingPrice) || 0) * 100) / 100,
+      quantity: Math.round((Number(formData.quantity) || 0) * 100) / 100,
+      minStockAlert: Math.round((Number(formData.minStockAlert) || 5) * 100) / 100,
+    };
     try {
       if (editId) {
-        await stockAPI.update(editId, formData);
+        await stockAPI.update(editId, payload);
       } else {
-        await stockAPI.create(formData);
+        await stockAPI.create(payload);
       }
       setShowModal(false);
       fetchStock(searchQuery);
@@ -136,6 +148,80 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     if (lower.includes('snack') || lower.includes('चहा')) return 'snacks';
     if (lower.includes('clean') || lower.includes('साबण')) return 'cleaning';
     return 'general';
+  };
+
+  const getCategoryLabel = (c) => {
+    if (!c) return t.catGeneral || 'General';
+    const l = c.toLowerCase();
+    if (l.includes('grain') || l.includes('धान्य')) return t.catGrains || 'Grains & Pulses';
+    if (l.includes('oil') || l.includes('तेल')) return t.catOils || 'Oils & Ghee';
+    if (l.includes('spice') || l.includes('मसाले')) return t.catSpices || 'Spices & Dryfruits';
+    if (l.includes('snack') || l.includes('चहा')) return t.catSnacks || 'Beverages & Snacks';
+    if (l.includes('clean') || l.includes('साबण')) return t.catCleaning || 'Soaps & Cleaning';
+    return t.catGeneral || 'General Kirana';
+  };
+
+  // Sorting Toggle Handler
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sorted Stock List Computation
+  const sortedStockList = [...stockList].sort((a, b) => {
+    let valA, valB;
+    if (sortField === 'name') {
+      valA = (a.name || '').toLowerCase();
+      valB = (b.name || '').toLowerCase();
+      return sortDirection === 'asc' ? valA.localeCompare(valB, 'mr') : valB.localeCompare(valA, 'mr');
+    }
+    if (sortField === 'category') {
+      valA = getCategoryLabel(a.category).toLowerCase();
+      valB = getCategoryLabel(b.category).toLowerCase();
+      return sortDirection === 'asc' ? valA.localeCompare(valB, 'mr') : valB.localeCompare(valA, 'mr');
+    }
+    if (sortField === 'costPrice') {
+      valA = Number(a.costPrice || 0);
+      valB = Number(b.costPrice || 0);
+    } else if (sortField === 'sellingPrice') {
+      valA = Number(a.sellingPrice || 0);
+      valB = Number(b.sellingPrice || 0);
+    } else if (sortField === 'quantity') {
+      valA = Number(a.quantity || 0);
+      valB = Number(b.quantity || 0);
+    } else {
+      valA = 0; valB = 0;
+    }
+    return sortDirection === 'asc' ? valA - valB : valB - valA;
+  });
+
+  // Sort Indicator Icon Component
+  const RenderSortIcon = ({ field }) => {
+    const isActive = sortField === field;
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '0.35rem', opacity: isActive ? 1 : 0.4 }}>
+        {isActive ? (
+          sortDirection === 'asc' ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m18 15-6-6-6 6"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          )
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m7 15 5 5 5-5"/>
+            <path d="m7 9 5-5 5 5"/>
+          </svg>
+        )}
+      </span>
+    );
   };
 
   // HTML2Canvas PDF Export Generator (100% Crisp Marathi Character Rendering + Multi-page support)
@@ -307,13 +393,60 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       <div className="card-surface" style={{ overflowX: 'auto', background: '#ffffff' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.92rem' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid var(--border-color)', background: 'var(--bg-surface-raised)' }}>
-              <th style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 700 }}>{t.productName}</th>
-              <th style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 700 }}>{t.category}</th>
-              <th style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 700 }}>{t.costPrice}</th>
-              <th style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 700 }}>{t.sellingPrice}</th>
-              <th style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 700 }}>{t.quantity}</th>
-              <th style={{ padding: '1rem 1.2rem', textAlign: 'right', color: 'var(--text-heading)', fontWeight: 700 }}>{t.actions}</th>
+            <tr style={{ borderBottom: '2px solid var(--border-color)', background: 'var(--bg-surface-raised)' }}>
+              <th
+                onClick={() => handleSort('name')}
+                style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 800, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                title="नावाने क्रमवारी लावा (Sort by Name)"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {t.productName} <RenderSortIcon field="name" />
+                </div>
+              </th>
+
+              <th
+                onClick={() => handleSort('category')}
+                style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 800, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                title="मालाच्या प्रकाराने क्रमवारी लावा (Sort by Category)"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {t.category} <RenderSortIcon field="category" />
+                </div>
+              </th>
+
+              <th
+                onClick={() => handleSort('costPrice')}
+                style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 800, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                title="खरेदी भावाने क्रमवारी लावा (Sort by Cost Price)"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {t.costPrice} <RenderSortIcon field="costPrice" />
+                </div>
+              </th>
+
+              <th
+                onClick={() => handleSort('sellingPrice')}
+                style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 800, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                title="विक्री भावाने क्रमवारी लावा (Sort by Selling Price)"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {t.sellingPrice} <RenderSortIcon field="sellingPrice" />
+                </div>
+              </th>
+
+              <th
+                onClick={() => handleSort('quantity')}
+                style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 800, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                title="शिल्लक मालाने क्रमवारी लावा (Sort by Remaining Stock)"
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {t.quantity} <RenderSortIcon field="quantity" />
+                </div>
+              </th>
+
+              <th style={{ padding: '1rem 1.2rem', textAlign: 'right', color: 'var(--text-heading)', fontWeight: 800, whiteSpace: 'nowrap' }}>
+                {t.actions}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -323,60 +456,80 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   <LoadingSpinner text="मालाचा साठा लोड होत आहे..." />
                 </td>
               </tr>
-            ) : stockList.length === 0 ? (
+            ) : sortedStockList.length === 0 ? (
               <tr>
                 <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   {t.noStockFound}
                 </td>
               </tr>
             ) : (
-              stockList.map((item) => {
+              sortedStockList.map((item) => {
                 const isLowStock = item.quantity <= (item.minStockAlert || 5);
                 const catStyleClass = getCategoryClass(item.category);
-                
-                // Localized Category Display Helper
-                const getCategoryLabel = (c) => {
-                  if (!c) return t.catGeneral;
-                  const l = c.toLowerCase();
-                  if (l.includes('grain') || l.includes('धान्य')) return t.catGrains;
-                  if (l.includes('oil') || l.includes('तेल')) return t.catOils;
-                  if (l.includes('spice') || l.includes('मसाले')) return t.catSpices;
-                  if (l.includes('snack') || l.includes('चहा')) return t.catSnacks;
-                  if (l.includes('clean') || l.includes('साबण')) return t.catCleaning;
-                  return t.catGeneral;
-                };
 
                 return (
-                  <tr key={item._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <tr key={`${item._id}-${sortField}-${sortDirection}`} className="stock-row-anim" style={{ borderBottom: '1px solid var(--border-color)' }}>
                     <td style={{ padding: '1rem 1.2rem', fontWeight: 700, color: 'var(--text-heading)' }}>
-                      {item.name}
-                      {isLowStock && (
-                        <span className="badge-unpaid" style={{ marginLeft: '0.6rem', fontSize: '0.75rem' }}>
-                          <TriangleAlertIcon size={14} color="var(--warning)" /> {t.lowStockAlert}
-                        </span>
-                      )}
+                      <div style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
+                        <span>{item.name}</span>
+                        {isLowStock && (
+                          <span
+                            title={t.lowStockAlert || 'कमी साठा वॉर्निंग! (Low Stock Alert)'}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0.2rem 0.45rem',
+                              borderRadius: '6px',
+                              background: 'var(--warning-bg)',
+                              border: '1px solid var(--warning-border)',
+                              color: 'var(--warning)',
+                              verticalAlign: 'middle',
+                              flexShrink: 0
+                            }}
+                          >
+                            <TriangleAlertIcon size={15} color="var(--warning)" />
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td style={{ padding: '1rem 1.2rem' }}>
+
+                    <td style={{ padding: '1rem 1.2rem', whiteSpace: 'nowrap' }}>
                       <span className={`category-pill ${catStyleClass}`}>
                         <TagIcon size={12} /> {getCategoryLabel(item.category)}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', color: 'var(--text-muted)' }}>₹{item.costPrice}</td>
-                    <td style={{ padding: '1rem 1.2rem', fontWeight: 800, color: 'var(--primary)', fontSize: '1rem' }}>₹{item.sellingPrice}</td>
-                    <td style={{ padding: '1rem 1.2rem' }}>
+
+                    <td style={{ padding: '1rem 1.2rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      ₹{Number(item.costPrice || 0).toFixed(2)}
+                    </td>
+
+                    <td style={{ padding: '1rem 1.2rem', fontWeight: 800, color: 'var(--primary)', fontSize: '1rem', whiteSpace: 'nowrap' }}>
+                      ₹{Number(item.sellingPrice || 0).toFixed(2)}
+                    </td>
+
+                    <td style={{ padding: '1rem 1.2rem', whiteSpace: 'nowrap', minWidth: '135px' }}>
                       <span style={{ 
                         fontWeight: 800, 
-                        color: isLowStock ? 'var(--warning)' : 'var(--text-heading)',
-                        background: isLowStock ? 'var(--warning-bg)' : 'var(--bg-surface-raised)',
-                        padding: '0.3rem 0.75rem',
+                        color: isLowStock ? '#d97706' : 'var(--text-heading)',
+                        background: '#f8fafc',
+                        padding: '0.35rem 0.65rem',
                         borderRadius: '8px',
-                        border: isLowStock ? '1px solid var(--warning-border)' : '1px solid var(--border-color)',
-                        fontSize: '0.9rem'
+                        border: '1px solid #e2e8f0',
+                        fontSize: '0.88rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '120px',
+                        boxSizing: 'border-box',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}>
-                        {item.quantity} {item.unit}
+                        {formatQuantity(item.quantity, item.unit)} {item.unit}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem 1.2rem', textAlign: 'right' }}>
+
+                    <td style={{ padding: '1rem 1.2rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end' }}>
                         <button
                           className="btn-action-edit"
@@ -484,12 +637,12 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   </label>
                   <input
                     type="number"
-                    step="any"
+                    step="0.01"
                     className="input-field"
                     required
-                    placeholder="0"
+                    placeholder="0.00"
                     value={formData.costPrice}
-                    onChange={(e) => setFormData({ ...formData, costPrice: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, costPrice: sanitizeDecimalInput(e.target.value) })}
                   />
                 </div>
 
@@ -499,12 +652,12 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   </label>
                   <input
                     type="number"
-                    step="any"
+                    step="0.01"
                     className="input-field"
                     required
-                    placeholder="0"
+                    placeholder="0.00"
                     value={formData.sellingPrice}
-                    onChange={(e) => setFormData({ ...formData, sellingPrice: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, sellingPrice: sanitizeDecimalInput(e.target.value) })}
                   />
                 </div>
               </div>
@@ -516,12 +669,15 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   </label>
                   <input
                     type="number"
-                    step="any"
+                    step={isIntegerUnit(formData.unit) ? "1" : "0.01"}
                     className="input-field"
                     required
-                    placeholder="0"
+                    placeholder={isIntegerUnit(formData.unit) ? "0" : "0.00"}
                     value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      quantity: isIntegerUnit(formData.unit) ? sanitizeIntegerInput(e.target.value) : sanitizeDecimalInput(e.target.value) 
+                    })}
                   />
                 </div>
 
@@ -531,10 +687,11 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   </label>
                   <input
                     type="number"
+                    step="1"
                     className="input-field"
                     placeholder="5"
                     value={formData.minStockAlert}
-                    onChange={(e) => setFormData({ ...formData, minStockAlert: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, minStockAlert: sanitizeIntegerInput(e.target.value) })}
                   />
                 </div>
               </div>
