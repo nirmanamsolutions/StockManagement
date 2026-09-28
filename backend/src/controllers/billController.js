@@ -18,7 +18,8 @@ exports.createBill = async (req, res, next) => {
     let calculatedTotal = 0;
     const billItems = [];
 
-const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+    const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
+    const roundUp = (num) => Math.ceil(round2(num));
 
     // Step 1: Verify & prepare stock items
     for (const item of items) {
@@ -33,8 +34,8 @@ const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
       const itemSellingPrice = round2(item.sellingPrice !== undefined ? item.sellingPrice : stockItem.sellingPrice);
       const itemUnit = item.unit || stockItem.unit;
       const itemQty = round2(item.quantity);
-      const itemSubtotal = round2(item.subtotal !== undefined ? item.subtotal : itemSellingPrice * itemQty);
-      calculatedTotal = round2(calculatedTotal + itemSubtotal);
+      const itemSubtotal = item.subtotal !== undefined ? roundUp(item.subtotal) : roundUp(itemSellingPrice * itemQty);
+      calculatedTotal = roundUp(calculatedTotal + itemSubtotal);
 
       billItems.push({
         productId: stockItem._id,
@@ -55,8 +56,8 @@ const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
 
     const billId = generateBillId();
     const isPaid = paymentStatus === 'PAID';
-    const finalAmountPaid = isPaid ? calculatedTotal : round2(amountPaid || 0);
-    const amountDue = round2(calculatedTotal - finalAmountPaid);
+    const finalAmountPaid = isPaid ? calculatedTotal : roundUp(amountPaid || 0);
+    const amountDue = roundUp(calculatedTotal - finalAmountPaid);
 
     // Step 3: Create Bill Record
     const newBill = await Bill.create({

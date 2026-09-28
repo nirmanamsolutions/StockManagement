@@ -30,8 +30,9 @@ export const formatQuantity = (quantity, unit) => {
 export const formatAmount = (amount) => {
   const num = Number(amount || 0);
   if (isNaN(num)) return '0';
-  // Round up to next whole number if fractional decimal exists (e.g. 17.1 to 17.9 becomes 18)
-  const rounded = Math.ceil(num);
+  // Round to 2 decimal places first to avoid floating point inaccuracies (e.g. 32.000000000000004), then round up to next whole number (e.g. 17.1 to 17.9 -> 18, 32.1 to 32.9 -> 33)
+  const fixedNum = Math.round(num * 100) / 100;
+  const rounded = Math.ceil(fixedNum);
   return rounded.toString();
 };
 

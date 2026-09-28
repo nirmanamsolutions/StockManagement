@@ -16,6 +16,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { stockAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import CustomModal from './CustomModal';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 export default function StockManagement({ modalState, setModalState, setActiveTab, t }) {
@@ -105,6 +106,47 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     setShowModal(true);
   };
 
+  // Custom UI Dialog Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    confirmText: '',
+    cancelText: ''
+  });
+
+  const showAlert = (message, title = 'माहिती', type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      type: type,
+      title: title,
+      message: message,
+      onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
+      onCancel: null,
+      confirmText: 'ठीक आहे (OK)',
+      cancelText: ''
+    });
+  };
+
+  const showConfirm = (message, title = 'खात्री करा', onConfirmFn) => {
+    setModalConfig({
+      isOpen: true,
+      type: 'danger',
+      title: title,
+      message: message,
+      confirmText: 'हटवा (Delete)',
+      cancelText: 'रद्द करा (Cancel)',
+      onConfirm: () => {
+        setModalConfig((prev) => ({ ...prev, isOpen: false }));
+        if (onConfirmFn) onConfirmFn();
+      },
+      onCancel: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     const payload = {
@@ -123,20 +165,20 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       setShowModal(false);
       fetchStock(searchQuery);
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving stock product');
+      showAlert(err.response?.data?.message || 'साठा सेव्ह करताना त्रुटी आली', 'त्रुटी', 'danger');
     }
   };
 
-  const handleDelete = async (id, name) => {
-    const confirmText = (t.confirmDeleteStock || "Are you sure you want to delete '{name}' from stock?").replace('{name}', name);
-    if (window.confirm(confirmText)) {
+  const handleDelete = (id, name) => {
+    const confirmText = (t.confirmDeleteStock || "तुम्हाला नक्की '{name}' साठ्यातून हटवायचा आहे का?").replace('{name}', name);
+    showConfirm(confirmText, 'सामान हटवा', async () => {
       try {
         await stockAPI.delete(id);
         fetchStock(searchQuery);
       } catch (err) {
-        alert('Failed to delete stock item');
+        showAlert('सामान हटवताना त्रुटी आली.', 'त्रुटी', 'danger');
       }
-    }
+    });
   };
 
   // Helper function to resolve category pill style
@@ -264,7 +306,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       pdf.save(`Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (err) {
       console.error('Failed to generate PDF report:', err);
-      alert('Failed to generate PDF report');
+      showAlert('PDF रिपोर्ट डाऊनलोड करताना अडचण आली', 'त्रुटी', 'danger');
     }
   };
 
@@ -723,7 +765,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
         {/* Report Shop Header */}
         <div style={{ textAlign: 'center', borderBottom: '3px solid #4338ca', paddingBottom: '1.2rem', marginBottom: '1.5rem' }}>
           <h1 style={{ fontSize: '1.9rem', color: '#1c1917', margin: 0, fontWeight: 800 }}>
-            शरद गौरीशंकर आंडगे — किराणा स्टोअर्स मोहोळ
+            शिवरत्न किराणा & जनरल स्टोअर्स — खंडोबाचीवाडी
           </h1>
           <p style={{ fontSize: '1.05rem', color: '#4338ca', fontWeight: 700, margin: '0.3rem 0' }}>
             {t.stockTitle} (Stock Inventory Report)
@@ -782,6 +824,18 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
           </tbody>
         </table>
       </div>
+
+      {/* Custom UI Dialog Modal */}
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+      />
 
     </div>
   );

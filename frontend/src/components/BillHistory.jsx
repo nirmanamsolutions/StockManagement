@@ -21,6 +21,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { billAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import CustomModal from './CustomModal';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 export default function BillHistory({ setActiveTab, t }) {
@@ -41,6 +42,31 @@ export default function BillHistory({ setActiveTab, t }) {
   // Selected Bill Modal for viewing receipt
   const [selectedBill, setSelectedBill] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  // Custom UI Dialog Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    confirmText: '',
+    cancelText: ''
+  });
+
+  const showAlert = (message, title = 'माहिती', type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      type: type,
+      title: title,
+      message: message,
+      onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
+      onCancel: null,
+      confirmText: 'ठीक आहे (OK)',
+      cancelText: ''
+    });
+  };
 
   useEffect(() => {
     fetchBills();
@@ -89,7 +115,7 @@ export default function BillHistory({ setActiveTab, t }) {
       pdf.save(`Invoice_${selectedBill?.billId || 'Receipt'}.pdf`);
     } catch (err) {
       console.error('Failed to download PDF receipt:', err);
-      alert('Failed to download PDF receipt');
+      showAlert('PDF पावती डाऊनलोड करताना अडचण आली.', 'त्रुटी', 'danger');
     }
   };
 
@@ -195,7 +221,7 @@ export default function BillHistory({ setActiveTab, t }) {
             </div>
           </div>
           <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--primary)', fontWeight: 800 }}>
-            ₹{Number(totalRevenue || 0).toFixed(2)}
+            ₹{formatAmount(totalRevenue)}
           </h3>
         </div>
 
@@ -210,7 +236,7 @@ export default function BillHistory({ setActiveTab, t }) {
             </div>
           </div>
           <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--success)', fontWeight: 800 }}>
-            ₹{Number(totalPaidRevenue || 0).toFixed(2)}
+            ₹{formatAmount(totalPaidRevenue)}
           </h3>
         </div>
 
@@ -225,7 +251,7 @@ export default function BillHistory({ setActiveTab, t }) {
             </div>
           </div>
           <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--danger)', fontWeight: 800 }}>
-            ₹{Number(totalKathaDue || 0).toFixed(2)}
+            ₹{formatAmount(totalKathaDue)}
           </h3>
         </div>
 
@@ -403,7 +429,7 @@ export default function BillHistory({ setActiveTab, t }) {
 
                       {/* Total Amount */}
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 800, fontSize: '1rem', color: 'var(--text-heading)' }}>
-                        ₹{Number(bill.totalAmount || 0).toFixed(2)}
+                        ₹{formatAmount(bill.totalAmount)}
                       </td>
 
                       {/* View / Print Action Button */}
@@ -492,13 +518,13 @@ export default function BillHistory({ setActiveTab, t }) {
               {/* Shop Title */}
               <div style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif' }}>
-                  {t.shopOwnerTitle || 'शरद गौरीशंकर आंडगे'}
+                  {t.receiptHeaderTitle || 'शिवरत्न किराणा & जनरल स्टोअर्स'}
                 </h2>
                 <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>
-                  {t.shopSubTitle || 'किराणा स्टोअर्स मोहोळ'}
+                  {t.receiptHeaderSubtitle || 'किराणा आणि जनरल स्टोअर्स खंडोबाचीवाडी'}
                 </div>
                 <div style={{ fontSize: '0.74rem', color: '#333' }}>
-                  प्लॉट नं. २१/२२, मार्केट यार्ड, मोहोळ, MOB NO:- 9921979797
+                  {t.receiptHeaderAddress || 'खंडोबाचीवाडी, MOB NO:- 9763950797'}
                 </div>
               </div>
 
@@ -551,7 +577,7 @@ export default function BillHistory({ setActiveTab, t }) {
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {selectedBill.items.length}</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
-                  एकूण रक्कम : {Number(selectedBill.totalAmount).toFixed(2)}
+                  एकूण रक्कम : {formatAmount(selectedBill.totalAmount)}
                 </span>
               </div>
 
@@ -562,12 +588,12 @@ export default function BillHistory({ setActiveTab, t }) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <div>
-                    <div>CASH REC. : {selectedBill.paymentType === 'CASH' && selectedBill.paymentStatus === 'PAID' ? Number(selectedBill.amountPaid).toFixed(2) : '0.00'}</div>
-                    <div>PHONE PAY : {selectedBill.paymentType === 'UPI' && selectedBill.paymentStatus === 'PAID' ? Number(selectedBill.amountPaid).toFixed(2) : '0.00'}</div>
+                    <div>CASH REC. : {selectedBill.paymentType === 'CASH' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
+                    <div>PHONE PAY : {selectedBill.paymentType === 'UPI' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div>RETURN AMT : 0.00</div>
-                    <div>CREDIT : {selectedBill.paymentStatus === 'UNPAID' ? Number(selectedBill.totalAmount).toFixed(2) : '0.00'}</div>
+                    <div>RETURN AMT : 0</div>
+                    <div>CREDIT : {selectedBill.paymentStatus === 'UNPAID' ? formatAmount(selectedBill.totalAmount) : '0'}</div>
                   </div>
                 </div>
               </div>
@@ -613,6 +639,18 @@ export default function BillHistory({ setActiveTab, t }) {
           </div>
         </div>
       )}
+
+      {/* Custom UI Dialog Modal */}
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+      />
 
     </div>
   );

@@ -15,6 +15,7 @@ import {
 } from '@animateicons/react/lucide';
 import { stockAPI, ledgerAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import { formatAmount } from '../utils/formatters';
 
 export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
   const [stats, setStats] = useState({
@@ -295,7 +296,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
           </div>
           <div style={{ marginTop: '0.35rem' }}>
             <h2 style={{ fontSize: '1.6rem', color: stats.totalDueAmount > 0 ? 'var(--danger)' : 'var(--text-heading)', fontWeight: 800, margin: '0 0 0.4rem 0', lineHeight: 1.1 }}>
-              {loading ? <LoadingSpinner inline size="sm" text="" /> : `₹${Number(stats.totalDueAmount || 0).toFixed(2)}`}
+              {loading ? <LoadingSpinner inline size="sm" text="" /> : `₹${formatAmount(stats.totalDueAmount)}`}
             </h2>
             <div style={{
               display: 'inline-flex',

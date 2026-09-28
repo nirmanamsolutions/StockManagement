@@ -20,6 +20,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ledgerAPI, billAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
+import CustomModal from './CustomModal';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput, sanitizePhoneInput, isValidPhone } from '../utils/formatters';
 
 export default function LedgerManagement({ setActiveTab, t }) {
@@ -54,6 +55,31 @@ export default function LedgerManagement({ setActiveTab, t }) {
   const [showAddDueModal, setShowAddDueModal] = useState(false);
   const [dueAmount, setDueAmount] = useState('');
   const [dueNote, setDueNote] = useState('');
+
+  // Custom UI Dialog Modal State
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: null,
+    onCancel: null,
+    confirmText: '',
+    cancelText: ''
+  });
+
+  const showAlert = (message, title = 'माहिती', type = 'info') => {
+    setModalConfig({
+      isOpen: true,
+      type: type,
+      title: title,
+      message: message,
+      onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
+      onCancel: null,
+      confirmText: 'ठीक आहे (OK)',
+      cancelText: ''
+    });
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -102,12 +128,12 @@ export default function LedgerManagement({ setActiveTab, t }) {
   const handleAddCustomer = async (e) => {
     e.preventDefault();
     if (!newCustName.trim() || !newCustPhone.trim()) {
-      alert('Name and Phone are required');
+      showAlert('नाव आणि फोन नंबर आवश्यक आहे!', 'सावधानी', 'warning');
       return;
     }
 
     if (!isValidPhone(newCustPhone)) {
-      alert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका! (Please enter a valid 10-digit phone number)');
+      showAlert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका!', 'सावधानी', 'warning');
       return;
     }
 
@@ -119,7 +145,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
       fetchCustomers(searchQuery);
       selectCustomer(res.data.data._id);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to add customer');
+      showAlert(err.response?.data?.message || 'नवीन ग्राहक खाते जोडताना अडचण आली.', 'त्रुटी', 'danger');
     }
   };
 
@@ -129,12 +155,12 @@ export default function LedgerManagement({ setActiveTab, t }) {
     const maxDue = Math.round((Number(customerDetails?.totalDue) || 0) * 100) / 100;
 
     if (!payAmount || isNaN(enteredAmt) || enteredAmt <= 0) {
-      alert('Please enter a valid payment amount');
+      showAlert('कृपया योग्य जमा रक्कम टाका!', 'सावधानी', 'warning');
       return;
     }
 
     if (enteredAmt > maxDue) {
-      alert(`जमा रक्कम बाकी उधारीपेक्षा जास्त असू शकत नाही! (Payment amount ₹${enteredAmt.toFixed(2)} cannot exceed total due balance of ₹${maxDue.toFixed(2)})`);
+      showAlert(`जमा रक्कम बाकी उधारीपेक्षा जास्त असू शकत नाही! (₹${enteredAmt} > ₹${maxDue})`, 'सावधानी', 'warning');
       return;
     }
 
@@ -154,7 +180,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
       selectCustomer(selectedCustomerId);
       fetchCustomers(searchQuery);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to record payment');
+      showAlert(err.response?.data?.message || 'पैसे जमा करताना त्रुटी आली.', 'त्रुटी', 'danger');
     }
   };
 
@@ -162,7 +188,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
     e.preventDefault();
     const enteredAmt = parseFloat(sanitizeDecimalInput(dueAmount));
     if (isNaN(enteredAmt) || enteredAmt <= 0) {
-      alert(t.enterValidPaymentAmount || 'कृपया योग्य रक्कम टाका!');
+      showAlert(t.enterValidPaymentAmount || 'कृपया योग्य रक्कम टाका!', 'सावधानी', 'warning');
       return;
     }
 
@@ -181,7 +207,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
       selectCustomer(selectedCustomerId);
       fetchCustomers(searchQuery);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to add credit amount');
+      showAlert(err.response?.data?.message || 'उधारी जोडताना अडचण आली.', 'त्रुटी', 'danger');
     }
   };
 
@@ -189,11 +215,11 @@ export default function LedgerManagement({ setActiveTab, t }) {
   const handleSendWhatsAppReminder = async () => {
     if (!selectedCustomerId) return;
     try {
-      const res = await ledgerAPI.getWhatsAppReminder(selectedCustomerId, 'किराणा आणि जनरल स्टोअर्स');
+      const res = await ledgerAPI.getWhatsAppReminder(selectedCustomerId, 'शिवरत्न किराणा & जनरल स्टोअर्स');
       const { whatsappUrl } = res.data.data;
       window.open(whatsappUrl, '_blank');
     } catch (err) {
-      alert('Failed to generate WhatsApp reminder link');
+      showAlert('व्हाट्सॲप रिमांडर लिंक तयार करताना अडचण आली.', 'त्रुटी', 'danger');
     }
   };
 
@@ -208,11 +234,11 @@ export default function LedgerManagement({ setActiveTab, t }) {
         setSelectedTxBill(res.data.data);
         setShowBillModal(true);
       } else {
-        alert('या व्यवहाराची बिल माहिती उपलब्ध नाही (Bill details not linked)');
+        showAlert('या व्यवहाराची बिल माहिती उपलब्ध नाही.', 'माहिती', 'info');
       }
     } catch (err) {
       console.error('Failed to load bill details:', err);
-      alert('बिल लोड करण्यास अडचण आली (Failed to load bill)');
+      showAlert('बिल लोड करण्यास अडचण आली.', 'त्रुटी', 'danger');
     }
   };
 
@@ -236,7 +262,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
       pdf.save(`Invoice_${selectedTxBill?.billId || 'Receipt'}.pdf`);
     } catch (err) {
       console.error('Failed to download PDF receipt:', err);
-      alert('Failed to download PDF receipt');
+      showAlert('PDF पावती डाऊनलोड करताना अडचण आली.', 'त्रुटी', 'danger');
     }
   };
 
@@ -387,7 +413,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                         color: c.totalDue > 0 ? 'var(--danger)' : 'var(--success)',
                         display: 'block'
                       }}>
-                        ₹{Number(c.totalDue || 0).toFixed(2)}
+                        ₹{formatAmount(c.totalDue)}
                       </span>
                       <span className={c.totalDue > 0 ? 'badge-unpaid' : 'badge-paid'} style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', marginTop: '0.2rem', display: 'inline-block' }}>
                         {c.totalDue > 0 ? t.dueStatusBadge : t.clearStatusBadge}
@@ -470,7 +496,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t.totalDue}</span>
                   <h2 style={{ fontSize: '1.8rem', color: customerDetails.totalDue > 0 ? 'var(--danger)' : 'var(--success)', margin: 0, fontWeight: 800 }}>
-                    ₹{Number(customerDetails.totalDue || 0).toFixed(2)}
+                    ₹{formatAmount(customerDetails.totalDue)}
                   </h2>
                 </div>
               </div>
@@ -577,7 +603,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
                         <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
                           <span style={{ fontWeight: 800, fontSize: '1rem', color: isDue ? 'var(--danger)' : 'var(--success)' }}>
-                            {isDue ? '+' : '-'}₹{Number(tx.amount || 0).toFixed(2)}
+                            {isDue ? '+' : '-'}₹{formatAmount(tx.amount)}
                           </span>
                           {isDue && hasBill && (
                             <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: '#ffffff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid var(--primary-light)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -868,13 +894,13 @@ export default function LedgerManagement({ setActiveTab, t }) {
               {/* Shop Title */}
               <div style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif' }}>
-                  {t.shopOwnerTitle || 'शरद गौरीशंकर आंडगे'}
+                  {t.receiptHeaderTitle || 'शिवरत्न किराणा & जनरल स्टोअर्स'}
                 </h2>
                 <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>
-                  {t.shopSubTitle || 'किराणा स्टोअर्स मोहोळ'}
+                  {t.receiptHeaderSubtitle || 'किराणा आणि जनरल स्टोअर्स खंडोबाचीवाडी'}
                 </div>
                 <div style={{ fontSize: '0.74rem', color: '#333' }}>
-                  प्लॉट नं. २१/२२, मार्केट यार्ड, मोहोळ, MOB NO:- 9921979797
+                  {t.receiptHeaderAddress || 'खंडोबाचीवाडी, MOB NO:- 9763950797'}
                 </div>
               </div>
 
@@ -983,6 +1009,18 @@ export default function LedgerManagement({ setActiveTab, t }) {
           </div>
         </div>
       )}
+
+      {/* Custom UI Dialog Modal */}
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        onConfirm={modalConfig.onConfirm}
+        onCancel={modalConfig.onCancel}
+      />
 
     </div>
   );
