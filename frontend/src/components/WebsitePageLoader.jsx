@@ -25,10 +25,10 @@ export default function WebsitePageLoader({
         </div>
 
         <h3 className="website-loader-title">{text}</h3>
-        <p className="website-loader-subtext">
+        <div className="website-loader-subtext">
           <SparklesIcon size={14} color="var(--accent-gold)" style={{ display: 'inline', marginRight: '4px' }} />
           {subtext}
-        </p>
+        </div>
 
         {/* Animated Progress Line */}
         <div className="website-loader-progress-track">

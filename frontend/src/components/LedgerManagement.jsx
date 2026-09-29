@@ -21,6 +21,7 @@ import html2canvas from 'html2canvas';
 import { ledgerAPI, billAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import CustomModal from './CustomModal';
+import CustomSelect from './CustomSelect';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput, sanitizePhoneInput, isValidPhone } from '../utils/formatters';
 
 export default function LedgerManagement({ setActiveTab, t }) {
@@ -449,7 +450,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
             }}
           >
             <ArrowLeftIcon size={16} />
-            <span>← ग्राहकांची यादी (Back to Customer List)</span>
+            <span> ग्राहकांची यादी</span>
           </button>
 
           {detailsLoading ? (
@@ -737,16 +738,16 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
                   {t.paymentType} *
                 </label>
-                <select
-                  className="input-field"
+                <CustomSelect
                   value={payMethod}
-                  onChange={(e) => setPayMethod(e.target.value)}
-                >
-                  <option value="CASH">{t.payCash}</option>
-                  <option value="UPI">{t.payUpi}</option>
-                  <option value="CARD">{t.payCard}</option>
-                  <option value="OTHER">{t.payOther}</option>
-                </select>
+                  onChange={(val) => setPayMethod(val)}
+                  options={[
+                    { value: 'CASH', label: t.payCash || 'रोख रक्कम' },
+                    { value: 'UPI', label: t.payUpi || 'गूगल पे / फोनपे / युपीआय' },
+                    { value: 'CARD', label: t.payCard || 'डेबिट / क्रेडिट कार्ड' },
+                    { value: 'OTHER', label: t.payOther || 'इतर मार्ग' }
+                  ]}
+                />
               </div>
 
               <div style={{ marginBottom: '1.6rem' }}>

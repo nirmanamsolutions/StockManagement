@@ -28,6 +28,7 @@ import html2canvas from 'html2canvas';
 import { billAPI, stockAPI, ledgerAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import CustomModal from './CustomModal';
+import CustomSelect from './CustomSelect';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput, sanitizePhoneInput, isValidPhone } from '../utils/formatters';
 
 // Unit normalization helper: converts 'pcs', 'pkt', 'packet', 'box', 'piece' into 'unit'
@@ -378,21 +379,28 @@ export default function BillingManagement({ setActiveTab, t }) {
       return;
     }
 
-    const nameToUse = customerName.trim();
-    if (!nameToUse) {
-      showAlert('कृपया ग्राहकाचे नाव प्रविष्ट करा! सर्व रकाने भरणे बंधनकारक आहे.', 'सावधानी', 'warning');
-      return;
-    }
+    let nameToUse = customerName.trim();
+    let phoneToUse = customerPhone.trim();
 
-    const phoneToUse = customerPhone.trim();
-    if (!phoneToUse || !isValidPhone(phoneToUse)) {
-      showAlert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका! सर्व रकाने भरणे बंधनकारक आहे.', 'सावधानी', 'warning');
-      return;
-    }
-
-    if (paymentStatus === 'UNPAID' && !selectedCustomerId && !phoneToUse) {
-      showAlert('उधारी बिलासाठी ग्राहकाचे नाव आणि १० अंकांचा मोबाईल नंबर आवश्यक आहे!', 'सावधानी', 'warning');
-      return;
+    if (paymentStatus === 'PAID') {
+      // For Paid bills: Name defaults to 'रोख ग्राहक' if empty, Phone is optional
+      if (!nameToUse) {
+        nameToUse = 'रोख ग्राहक';
+      }
+      if (phoneToUse && !isValidPhone(phoneToUse)) {
+        showAlert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका किंवा रकाना रिकामा ठेवा.', 'सावधानी', 'warning');
+        return;
+      }
+    } else {
+      // For Katha (Unpaid) bills: Customer name and valid 10-digit phone are strictly required
+      if (!nameToUse) {
+        showAlert('उधारी बिलासाठी ग्राहकाचे नाव प्रविष्ट करणे आवश्यक आहे!', 'सावधानी', 'warning');
+        return;
+      }
+      if (!phoneToUse || !isValidPhone(phoneToUse)) {
+        showAlert('उधारी बिलासाठी ग्राहकाचा १० अंकांचा योग्य मोबाईल नंबर आवश्यक आहे!', 'सावधानी', 'warning');
+        return;
+      }
     }
 
     const totalBillAmount = grandTotal;
@@ -469,7 +477,7 @@ export default function BillingManagement({ setActiveTab, t }) {
   });
 
   return (
-    <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 0.75rem', paddingBottom: '6.5rem' }}>
+    <div style={{ maxWidth: '1380px', width: '100%', margin: '0 auto', padding: '0 0.75rem', paddingBottom: '6.5rem', boxSizing: 'border-box', overflowX: 'hidden' }}>
 
       {/* Floating Fixed Circular Back Button */}
       {setActiveTab && (
@@ -810,7 +818,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                         key={product._id}
                         className="card-surface"
                         style={{
-                          padding: '1rem 0.85rem',
+                          padding: '0.95rem',
                           background: '#ffffff',
                           borderRadius: 'var(--radius-md)',
                           display: 'flex',
@@ -821,12 +829,15 @@ export default function BillingManagement({ setActiveTab, t }) {
                           border: curQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
                           boxShadow: curQty > 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-card)',
                           transition: 'all 0.15s ease',
-                          minWidth: 0
+                          width: '100%',
+                          maxWidth: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box'
                         }}
                       >
-                        {/* Top Stock Status (Category box removed completely as requested) */}
+                        {/* Top Stock Status */}
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', marginBottom: '0.45rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', marginBottom: '0.35rem' }}>
                             <span style={{
                               fontSize: '0.74rem',
                               fontWeight: 700,
@@ -838,7 +849,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
                           {/* Product Name */}
                           <h4 style={{
-                            fontSize: '0.95rem',
+                            fontSize: '0.98rem',
                             fontWeight: 800,
                             color: 'var(--text-heading)',
                             marginBottom: '0.5rem',
@@ -849,53 +860,98 @@ export default function BillingManagement({ setActiveTab, t }) {
                           </h4>
                         </div>
 
-                        {/* CONTROLS ON THE CATALOG CARD (Read-only Price Tag, Quantity & Unit Dropdown) */}
-                        <div style={{ background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        {/* CONTROLS ON THE CATALOG CARD (Cost Price, Selling Rate Tag, Quantity & Unit Dropdown) */}
+                        <div style={{
+                          background: '#f8fafc',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: 'var(--radius-sm)',
+                          padding: '0.65rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem',
+                          width: '100%',
+                          boxSizing: 'border-box'
+                        }}>
 
-                          {/* Read-only Selling Rate Tag (Not editable in stock list) */}
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem', background: '#eef2ff', borderRadius: '4px', border: '1px solid #c7d2fe' }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#3730a3' }}>विक्री दर:</span>
-                            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary)' }}>
-                              ₹{formatAmount(product.sellingPrice)} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>/ {getMarathiUnitLabel(product.unit)}</span>
-                            </span>
+                          {/* Cost Price & Selling Rate Tag */}
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            background: '#eef2ff',
+                            borderRadius: '6px',
+                            padding: '0.4rem 0.65rem',
+                            border: '1px solid #c7d2fe',
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            flexWrap: 'wrap'
+                          }}>
+                            <div>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#475569', display: 'block' }}>खरेदी दर:</span>
+                              <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#334155' }}>
+                                ₹{formatAmount(product.costPrice || 0)}
+                              </span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3730a3', display: 'block' }}>विक्री दर :</span>
+                              <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary)' }}>
+                                ₹{formatAmount(product.sellingPrice)} <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)' }}>/ {getMarathiUnitLabel(product.unit)}</span>
+                              </span>
+                            </div>
                           </div>
 
                           {/* Quantity & Unit Controls */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '0.4rem', alignItems: 'center' }}>
-                            <div>
-                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>प्रमाण:</label>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            width: '100%',
+                            boxSizing: 'border-box'
+                          }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px' }}>प्रमाण:</label>
                               <input
                                 type="number"
+                                inputMode={isIntegerUnit(curUnit) ? "numeric" : "decimal"}
                                 step={isIntegerUnit(curUnit) ? "1" : "0.01"}
                                 min="0"
                                 placeholder="0"
                                 value={curQty > 0 ? curQty : ''}
                                 onChange={(e) => handleCatalogCardFieldChange(product, 'quantity', e.target.value)}
-                                style={{ width: '100%', padding: '0.25rem 0.35rem', fontSize: '0.88rem', fontWeight: 800, border: '1px solid var(--border-color)', borderRadius: '4px', textAlign: 'center', background: '#ffffff' }}
+                                style={{
+                                  width: '100%',
+                                  height: '36px',
+                                  padding: '0.25rem 0.35rem',
+                                  fontSize: '0.9rem',
+                                  fontWeight: 800,
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '6px',
+                                  textAlign: 'center',
+                                  background: '#ffffff',
+                                  boxSizing: 'border-box'
+                                }}
                               />
                             </div>
 
-                            <div>
-                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>युनिट:</label>
-                              <select
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px' }}>युनिट:</label>
+                              <CustomSelect
+                                compact={true}
                                 value={normalizeUnit(curUnit)}
-                                onChange={(e) => handleCatalogCardFieldChange(product, 'unit', e.target.value)}
-                                style={{ width: '100%', padding: '0.25rem 0.2rem', fontSize: '0.78rem', fontWeight: 700, border: '1px solid var(--border-color)', borderRadius: '4px', background: '#ffffff' }}
-                              >
-                                {getConvertibleUnits(product.unit).map((u) => (
-                                  <option key={u.id} value={u.id}>{u.label}</option>
-                                ))}
-                              </select>
+                                onChange={(val) => handleCatalogCardFieldChange(product, 'unit', val)}
+                                options={getConvertibleUnits(product.unit).map((u) => ({ value: u.id, label: u.label }))}
+                              />
                             </div>
                           </div>
 
                         </div>
 
                         {/* Card Footer: Live Subtotal & Add/Remove Action */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem', width: '100%', boxSizing: 'border-box' }}>
                           <div>
                             <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण रक्कम:</span>
-                            <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary)' }}>
+                            <span style={{ fontSize: '1.08rem', fontWeight: 800, color: 'var(--primary)' }}>
                               ₹{formatAmount(curSubtotal)}
                             </span>
                           </div>
@@ -905,29 +961,29 @@ export default function BillingManagement({ setActiveTab, t }) {
                               type="button"
                               onClick={() => handleIncrement(product)}
                               className="btn-primary"
-                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                              style={{ padding: '0.45rem 0.95rem', fontSize: '0.84rem', height: '36px' }}
                             >
-                              <PlusIcon size={14} /> जोडा
+                              <PlusIcon size={15} /> जोडा
                             </button>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                               <button
                                 type="button"
                                 onClick={() => handleDecrement(product)}
                                 className="btn-secondary"
-                                style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}
+                                style={{ padding: '0.3rem 0.55rem', fontSize: '0.75rem', height: '36px', width: '36px', justifyContent: 'center' }}
                                 title="कम करा"
                               >
-                                <MinusIcon size={12} />
+                                <MinusIcon size={14} />
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => handleRemoveItem(product._id)}
-                                style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)', padding: '0.3rem 0.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.72rem', fontWeight: 700 }}
+                                style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)', padding: '0.3rem 0.55rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', fontSize: '0.72rem', fontWeight: 700, height: '36px' }}
                                 title="काढून टाका"
                               >
-                                <TrashIcon size={12} />
+                                <TrashIcon size={14} />
                               </button>
                             </div>
                           )}
@@ -1089,28 +1145,27 @@ export default function BillingManagement({ setActiveTab, t }) {
                     <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
                       पेमेंट पद्धत
                     </label>
-                    <select
-                      className="input-field"
+                    <CustomSelect
                       value={paymentType}
-                      onChange={(e) => setPaymentType(e.target.value)}
-                      style={{ fontSize: '0.85rem', height: '38px', marginBottom: '0.65rem' }}
-                    >
-                      <option value="CASH">{t.payCash || 'रोख '}</option>
-                      <option value="UPI">{t.payUpi || 'GPay / PhonePe (UPI)'}</option>
-                      <option value="CARD">{t.payCard || 'कार्ड (Card)'}</option>
-                      <option value="OTHER">{t.payOther || 'इतर (Other)'}</option>
-                    </select>
+                      onChange={(val) => setPaymentType(val)}
+                      options={[
+                        { value: 'CASH', label: t.payCash || 'रोख रक्कम' },
+                        { value: 'UPI', label: t.payUpi || 'गूगल पे / फोनपे / युपीआय' },
+                        { value: 'CARD', label: t.payCard || 'डेबिट / क्रेडिट कार्ड' },
+                        { value: 'OTHER', label: t.payOther || 'इतर मार्ग' }
+                      ]}
+                      style={{ marginBottom: '0.65rem' }}
+                    />
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
                       <div>
                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                          ग्राहकाचे नाव *
+                          ग्राहकाचे नाव (ऐच्छिक)
                         </label>
                         <input
                           type="text"
-                          required
                           className="input-field"
-                          placeholder="उदा. राहुल पाटील *"
+                          placeholder="उदा. रोख ग्राहक"
                           value={customerName}
                           onChange={(e) => setCustomerName(e.target.value)}
                           style={{ fontSize: '0.82rem', height: '38px' }}
@@ -1118,14 +1173,14 @@ export default function BillingManagement({ setActiveTab, t }) {
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                          मोबाईल नंबर*
+                          मोबाईल नंबर (ऐच्छिक)
                         </label>
                         <input
-                          type="text"
-                          required
+                          type="tel"
+                          inputMode="numeric"
                           maxLength={10}
                           className="input-field"
-                          placeholder="१० अंकांचा मोबाईल नंबर *"
+                          placeholder="१० अंकांचा नंबर (ऐच्छिक)"
                           value={customerPhone}
                           onChange={(e) => setCustomerPhone(sanitizePhoneInput(e.target.value))}
                           style={{ fontSize: '0.82rem', height: '38px' }}
@@ -1189,22 +1244,22 @@ export default function BillingManagement({ setActiveTab, t }) {
                       </form>
                     )}
 
-                    <select
-                      className="input-field"
+                    <CustomSelect
                       value={selectedCustomerId || ''}
-                      onChange={(e) => {
-                        const cust = ledgerCustomers.find((c) => c._id === e.target.value);
+                      onChange={(val) => {
+                        const cust = ledgerCustomers.find((c) => c._id === val);
                         if (cust) handleSelectCustomer(cust);
                       }}
-                      style={{ fontSize: '0.85rem', height: '38px', fontWeight: 700, marginBottom: '0.55rem' }}
-                    >
-                      <option value="">-- उधारी ग्राहक निवडा --</option>
-                      {ledgerCustomers.map((cust) => (
-                        <option key={cust._id} value={cust._id}>
-                          {cust.name} ({cust.phone}) - उधारी: ₹{cust.totalDue}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="-- उधारी ग्राहक निवडा --"
+                      options={[
+                        { value: '', label: '-- उधारी ग्राहक निवडा --' },
+                        ...ledgerCustomers.map((cust) => ({
+                          value: cust._id,
+                          label: `${cust.name} (${cust.phone}) - उधारी: ₹${cust.totalDue}`
+                        }))
+                      ]}
+                      style={{ marginBottom: '0.55rem' }}
+                    />
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
                       <div>
@@ -1240,73 +1295,60 @@ export default function BillingManagement({ setActiveTab, t }) {
                   </div>
                 )}
 
-                <div style={{
-                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                  color: '#ffffff',
-                  padding: '1rem 1.25rem',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '1.25rem',
-                  boxShadow: '0 4px 14px var(--primary-glow)'
-                }}>
-                  <div>
-                    <span style={{ fontSize: '0.82rem', color: '#ffffff', opacity: 1, fontWeight: 700 }}>
-                      एकूण बिल रक्कम
-                    </span>
-                    <h3 style={{ fontSize: '1.75rem', margin: 0, fontWeight: 800, color: '#ffffff' }}>
-                      ₹{formatAmount(grandTotal)}
-                    </h3>
-                  </div>
-                  <SparklesIcon size={28} color="#ffffff" />
-                </div>
-                {/* GENERATE BILL BUTTON */}
-                <button
-                  type="button"
-                  disabled={isSubmitting || cartItems.length === 0}
-                  onClick={handleFinalSubmitBill}
-                  className="btn-primary"
-                  style={{
-                    width: '100%',
-                    height: '48px',
-                    fontSize: '1rem',
-                    fontWeight: 800,
-                    justifyContent: 'center',
+                {/* Total Grand Summary Banner & Submit Button (Desktop Only - Hidden on Mobile to prevent duplicate checkout buttons) */}
+                <div className="hide-mobile">
+                  <div style={{
+                    background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                    color: '#ffffff',
+                    padding: '1rem 1.25rem',
                     borderRadius: 'var(--radius-sm)',
-                    opacity: (isSubmitting || cartItems.length === 0) ? 0.6 : 1,
-                    cursor: (isSubmitting || cartItems.length === 0) ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  <PrinterIcon size={20} color="#ffffff" />
-                  <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
-                </button>
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '1.25rem',
+                    boxShadow: '0 4px 14px var(--primary-glow)'
+                  }}>
+                    <div>
+                      <span style={{ fontSize: '0.82rem', color: '#ffffff', opacity: 1, fontWeight: 700 }}>
+                        एकूण बिल रक्कम
+                      </span>
+                      <h3 style={{ fontSize: '1.75rem', margin: 0, fontWeight: 800, color: '#ffffff' }}>
+                        ₹{formatAmount(grandTotal)}
+                      </h3>
+                    </div>
+                    <SparklesIcon size={28} color="#ffffff" />
+                  </div>
+                  {/* GENERATE BILL BUTTON */}
+                  <button
+                    type="button"
+                    disabled={isSubmitting || cartItems.length === 0}
+                    onClick={handleFinalSubmitBill}
+                    className="btn-primary"
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      fontSize: '1rem',
+                      fontWeight: 800,
+                      justifyContent: 'center',
+                      borderRadius: 'var(--radius-sm)',
+                      opacity: (isSubmitting || cartItems.length === 0) ? 0.6 : 1,
+                      cursor: (isSubmitting || cartItems.length === 0) ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <PrinterIcon size={20} color="#ffffff" />
+                    <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
+                  </button>
+                </div>
 
               </div>
 
             </div>
 
-            {/* Sticky Mobile Floating Cart Bar */}
+            {/* Floating Mobile Cart Bar (When on Catalog View) */}
             {mobilePosTab === 'catalog' && cartItems.length > 0 && (
               <div
-                className="mobile-pos-tabs no-print"
+                className="mobile-pos-floating-bar no-print"
                 onClick={() => setMobilePosTab('cart')}
-                style={{
-                  display: 'none',
-                  position: 'fixed',
-                  bottom: '1rem',
-                  left: '1rem',
-                  right: '1rem',
-                  zIndex: 9999,
-                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                  color: '#ffffff',
-                  padding: '0.85rem 1.2rem',
-                  borderRadius: 'var(--radius-md)',
-                  boxShadow: '0 8px 24px rgba(67, 56, 202, 0.4)',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer'
-                }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
                   <ShoppingCartIcon size={20} color="#ffffff" />
@@ -1318,6 +1360,38 @@ export default function BillingManagement({ setActiveTab, t }) {
                   <span>बिल पहा</span>
                   <ArrowRightIcon size={16} color="#ffffff" />
                 </div>
+              </div>
+            )}
+
+            {/* Sticky Mobile Checkout Bar (When on Cart View) */}
+            {mobilePosTab === 'cart' && cartItems.length > 0 && (
+              <div className="mobile-cart-sticky-submit no-print">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण बिल रक्कम</span>
+                    <span style={{ fontSize: '1.25rem', color: 'var(--primary)', fontWeight: 800 }}>₹{formatAmount(grandTotal)}</span>
+                  </div>
+                  <span style={{ fontSize: '0.78rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontWeight: 800 }}>
+                    {cartItems.length} वस्तू
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleFinalSubmitBill}
+                  className="btn-primary"
+                  style={{
+                    width: '100%',
+                    height: '46px',
+                    fontSize: '0.95rem',
+                    fontWeight: 800,
+                    justifyContent: 'center',
+                    borderRadius: 'var(--radius-sm)'
+                  }}
+                >
+                  <PrinterIcon size={18} color="#ffffff" />
+                  <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
+                </button>
               </div>
             )}
 

@@ -264,6 +264,83 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
+/* Modern UI Custom Select Dropdown Styling Across Entire Application */
+select,
+select.input-field {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234338ca' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 1.05rem;
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-sm, 10px);
+  color: var(--text-heading, #1c1917);
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.55rem 2.4rem 0.55rem 0.85rem;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+  min-height: 42px;
+}
+
+select:hover,
+select.input-field:hover {
+  border-color: var(--primary, #4338ca);
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 56, 202, 0.08);
+}
+
+select:focus,
+select.input-field:focus {
+  border-color: var(--primary, #4338ca);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3.5px var(--primary-glow, rgba(67, 56, 202, 0.18)), 0 4px 14px rgba(67, 56, 202, 0.1);
+  transform: translateY(-1px);
+}
+
+select:active {
+  transform: translateY(0);
+}
+
+select option {
+  background-color: #ffffff;
+  color: var(--text-heading, #1c1917);
+  font-weight: 600;
+  padding: 0.55rem;
+}
+
+/* Compact Select Variation for In-Card Controls & Tables */
+select.select-compact {
+  min-height: 36px;
+  height: 36px;
+  padding: 0.25rem 2rem 0.25rem 0.65rem;
+  font-size: 0.82rem;
+  background-position: right 0.55rem center;
+  background-size: 0.92rem;
+  border-radius: 6px;
+}
+
+/* Mobile Responsive Dropdown Adjustments */
+@media (max-width: 768px) {
+  select,
+  select.input-field {
+    min-height: 44px;
+    font-size: 0.92rem;
+    padding: 0.6rem 2.4rem 0.6rem 0.85rem;
+  }
+}
+
 /* Category Color Pill Badges */
 .category-pill {
   padding: 0.25rem 0.75rem;
@@ -497,6 +574,17 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
 }
 
+@keyframes selectDropdownSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
   .app-root-container {
     padding-bottom: 4rem !important;
@@ -578,7 +666,52 @@ h1, h2, h3, h4, h5, h6 {
 
   /* Responsive Adjustments for Floating Mobile POS Cart Switcher */
   .mobile-pos-floating-bar {
-    bottom: 4.25rem !important;
+    display: flex;
+    position: fixed;
+    bottom: calc(60px + 12px);
+    left: 0.85rem;
+    right: 0.85rem;
+    z-index: 9998;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #ffffff;
+    padding: 0.85rem 1.2rem;
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 25px rgba(67, 56, 202, 0.4);
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    animation: floatSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+/* Sticky Mobile Checkout Bar in Cart view */
+.mobile-cart-sticky-submit {
+  display: none;
+}
+
+@media (max-width: 992px) {
+  .mobile-cart-sticky-submit {
+    display: block;
+    position: sticky;
+    bottom: calc(60px + 8px);
+    z-index: 9990;
+    background: #ffffff;
+    border: 1.5px solid var(--primary-light);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.1);
+    margin-top: 1rem;
+  }
+}
+
+@keyframes floatSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -602,12 +735,32 @@ h1, h2, h3, h4, h5, h6 {
   grid-template-columns: minmax(0, 1fr) minmax(340px, 450px);
   gap: 1.25rem;
   align-items: start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.pos-catalog-column {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.pos-cart-column {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .pos-products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 992px) {
@@ -647,14 +800,15 @@ h1, h2, h3, h4, h5, h6 {
     padding: 1.25rem 1rem !important;
     max-width: 100% !important;
   }
+
+  .pos-products-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+    width: 100% !important;
+  }
 }
 
 @media (max-width: 640px) {
-  .pos-products-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 0.5rem !important;
-  }
-
   .navbar-shop-title {
     font-size: 0.92rem !important;
   }

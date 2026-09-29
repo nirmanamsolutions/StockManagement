@@ -17,6 +17,7 @@ import html2canvas from 'html2canvas';
 import { stockAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import CustomModal from './CustomModal';
+import CustomSelect from './CustomSelect';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 export default function StockManagement({ modalState, setModalState, setActiveTab, t }) {
@@ -419,20 +420,20 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
         {/* Category Filter Dropdown */}
         <div className="card-surface" style={{ padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff' }}>
           <FilterIcon size={18} color="var(--primary)" />
-          <select
-            className="input-field"
+          <CustomSelect
             value={selectedCategoryFilter}
-            onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-            style={{ border: 'none', background: 'transparent', boxShadow: 'none', fontWeight: 600 }}
-          >
-            <option value="">{t.catAll}</option>
-            <option value="Grains & Pulses">{t.catGrains}</option>
-            <option value="Oils & Ghee">{t.catOils}</option>
-            <option value="Spices & Dryfruits">{t.catSpices}</option>
-            <option value="Beverages & Snacks">{t.catSnacks}</option>
-            <option value="Soaps & Cleaning">{t.catCleaning}</option>
-            <option value="General Kirana">{t.catGeneral}</option>
-          </select>
+            onChange={(val) => setSelectedCategoryFilter(val)}
+            options={[
+              { value: '', label: t.catAll || 'सर्व प्रकार' },
+              { value: 'Grains & Pulses', label: t.catGrains || 'धान्य व डाळी' },
+              { value: 'Oils & Ghee', label: t.catOils || 'तेल आणि तूप' },
+              { value: 'Spices & Dryfruits', label: t.catSpices || 'मसाले व ड्रायफ्रूट्स' },
+              { value: 'Beverages & Snacks', label: t.catSnacks || 'चहा, पेये व बिस्किटे' },
+              { value: 'Soaps & Cleaning', label: t.catCleaning || 'साबण व स्वच्छता' },
+              { value: 'General Kirana', label: t.catGeneral || 'जनरल किराणा' }
+            ]}
+            style={{ flex: 1 }}
+          />
         </div>
       </div>
 
@@ -722,37 +723,37 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
                     {t.category} *
                   </label>
-                  <select
-                    className="input-field"
+                  <CustomSelect
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <option value="Grains & Pulses">{t.catGrains}</option>
-                    <option value="Oils & Ghee">{t.catOils}</option>
-                    <option value="Spices & Dryfruits">{t.catSpices}</option>
-                    <option value="Beverages & Snacks">{t.catSnacks}</option>
-                    <option value="Soaps & Cleaning">{t.catCleaning}</option>
-                    <option value="General Kirana">{t.catGeneral}</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, category: val })}
+                    options={[
+                      { value: "Grains & Pulses", label: t.catGrains },
+                      { value: "Oils & Ghee", label: t.catOils },
+                      { value: "Spices & Dryfruits", label: t.catSpices },
+                      { value: "Beverages & Snacks", label: t.catSnacks },
+                      { value: "Soaps & Cleaning", label: t.catCleaning },
+                      { value: "General Kirana", label: t.catGeneral }
+                    ]}
+                  />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
                     {t.unit} *
                   </label>
-                  <select
-                    className="input-field"
+                  <CustomSelect
                     value={formData.unit}
-                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                  >
-                    <option value="kg">{t.unitKg}</option>
-                    <option value="g">{t.unitG}</option>
-                    <option value="unit">{t.unitUnit || 'नग'}</option>
-                    <option value="liter">{t.unitLiter}</option>
-                    <option value="ml">{t.unitMl || 'मिली'}</option>
-                    <option value="meter">{t.unitMeter}</option>
-                    <option value="quintal">{t.unitQuintal || 'क्विंटल'}</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, unit: val })}
+                    options={[
+                      { value: "kg", label: t.unitKg },
+                      { value: "g", label: t.unitG },
+                      { value: "unit", label: t.unitUnit || 'नग' },
+                      { value: "liter", label: t.unitLiter },
+                      { value: "ml", label: t.unitMl || 'मिली' },
+                      { value: "meter", label: t.unitMeter },
+                      { value: "quintal", label: t.unitQuintal || 'क्विंटल' }
+                    ]}
+                  />
                 </div>
               </div>
 
