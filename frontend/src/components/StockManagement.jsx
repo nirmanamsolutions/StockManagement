@@ -35,6 +35,10 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
+  // Loading States for Action Buttons
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+
   // Modal form state
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -162,6 +166,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       minStockAlert: Math.round((Number(formData.minStockAlert) || 5) * 100) / 100,
     };
     try {
+      setIsSubmitting(true);
       if (editId) {
         await stockAPI.update(editId, payload);
       } else {
@@ -171,6 +176,8 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       fetchStock(searchQuery);
     } catch (err) {
       showAlert(err.response?.data?.message || 'साठा सेव्ह करताना त्रुटी आली', 'त्रुटी', 'danger');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -285,6 +292,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   // HTML2Canvas PDF Export Generator (100% Crisp Marathi Character Rendering + Multi-page support)
   const generatePDFReport = async () => {
     try {
+      setIsDownloadingPDF(true);
       const template = document.getElementById('pdf-report-template');
       if (!template) return;
 
@@ -323,6 +331,8 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     } catch (err) {
       console.error('Failed to generate PDF report:', err);
       showAlert('PDF रिपोर्ट डाऊनलोड करताना अडचण आली', 'त्रुटी', 'danger');
+    } finally {
+      setIsDownloadingPDF(false);
     }
   };
 
@@ -389,9 +399,18 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
         </h2>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-          <button className="btn-secondary" onClick={generatePDFReport}>
-            <DownloadIcon size={18} color="var(--primary)" />
-            {t.exportPdf}
+          <button className="btn-secondary" onClick={generatePDFReport} disabled={isDownloadingPDF}>
+            {isDownloadingPDF ? (
+              <>
+                <span className="btn-spinner" />
+                <span>अहवाल डाऊनलोड होत आहे...</span>
+              </>
+            ) : (
+              <>
+                <DownloadIcon size={18} color="var(--primary)" />
+                {t.exportPdf}
+              </>
+            )}
           </button>
 
           <button className="btn-primary" onClick={openAddModal}>
@@ -824,11 +843,18 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.85rem' }}>
-                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>
+                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)} disabled={isSubmitting}>
                   {t.cancelBtn}
                 </button>
-                <button type="submit" className="btn-primary">
-                  {t.saveStockBtn}
+                <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>{editId ? 'अपडेट होत आहे...' : 'साठवत आहे...'}</span>
+                    </>
+                  ) : (
+                    editId ? (t.btnEditStock || 'अपडेट करा') : (t.saveStockBtn || 'साठा सेव्ह करा')
+                  )}
                 </button>
               </div>
             </form>

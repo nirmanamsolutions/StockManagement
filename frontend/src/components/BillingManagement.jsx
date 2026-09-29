@@ -145,6 +145,8 @@ export default function BillingManagement({ setActiveTab, t }) {
   // Receipt & Submission State
   const [createdBill, setCreatedBill] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingInlineCustomer, setIsSubmittingInlineCustomer] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   useEffect(() => {
     fetchStock();
@@ -349,6 +351,7 @@ export default function BillingManagement({ setActiveTab, t }) {
     }
 
     try {
+      setIsSubmittingInlineCustomer(true);
       const res = await ledgerAPI.addCustomer({
         name: newCustName.trim(),
         phone: newCustPhone.trim(),
@@ -363,6 +366,8 @@ export default function BillingManagement({ setActiveTab, t }) {
       setNewCustPhone('');
     } catch (err) {
       showAlert(err.response?.data?.message || 'नवीन उधारी ग्राहक खाते जोडताना अडचण आली', 'त्रुटी', 'danger');
+    } finally {
+      setIsSubmittingInlineCustomer(false);
     }
   };
 
@@ -438,6 +443,7 @@ export default function BillingManagement({ setActiveTab, t }) {
   // Download PDF Receipt
   const handleDownloadPDFReceipt = async () => {
     try {
+      setIsDownloadingPDF(true);
       const receiptElem = document.getElementById('pos-bill-receipt-paper');
       if (!receiptElem) return;
 
@@ -457,6 +463,8 @@ export default function BillingManagement({ setActiveTab, t }) {
     } catch (err) {
       console.error('Failed to generate PDF receipt:', err);
       showAlert('PDF पावती डाऊनलोड करताना अडचण आली. कृपया पुन्हा प्रयत्न करा.', 'त्रुटी', 'danger');
+    } finally {
+      setIsDownloadingPDF(false);
     }
   };
 
@@ -664,10 +672,20 @@ export default function BillingManagement({ setActiveTab, t }) {
                 type="button"
                 className="btn-secondary"
                 onClick={handleDownloadPDFReceipt}
+                disabled={isDownloadingPDF}
                 style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
               >
-                <DownloadIcon size={18} color="var(--primary)" />
-                Download PDF
+                {isDownloadingPDF ? (
+                  <>
+                    <span className="btn-spinner" />
+                    <span>डाऊनलोड होत आहे...</span>
+                  </>
+                ) : (
+                  <>
+                    <DownloadIcon size={18} color="var(--primary)" />
+                    Download PDF
+                  </>
+                )}
               </button>
 
               <button
@@ -1238,8 +1256,17 @@ export default function BillingManagement({ setActiveTab, t }) {
                           style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.5rem' }}
                         />
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
-                          <button type="button" className="btn-secondary" onClick={() => setShowAddCustomerForm(false)} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}>रद्द</button>
-                          <button type="submit" className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>सेव्ह करा</button>
+                          <button type="button" className="btn-secondary" onClick={() => setShowAddCustomerForm(false)} disabled={isSubmittingInlineCustomer} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}>रद्द</button>
+                          <button type="submit" className="btn-primary" disabled={isSubmittingInlineCustomer} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+                            {isSubmittingInlineCustomer ? (
+                              <>
+                                <span className="btn-spinner" />
+                                <span>सेव्ह होत आहे...</span>
+                              </>
+                            ) : (
+                              'सेव्ह करा'
+                            )}
+                          </button>
                         </div>
                       </form>
                     )}
@@ -1335,8 +1362,17 @@ export default function BillingManagement({ setActiveTab, t }) {
                       cursor: (isSubmitting || cartItems.length === 0) ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    <PrinterIcon size={20} color="#ffffff" />
-                    <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
+                    {isSubmitting ? (
+                      <>
+                        <span className="btn-spinner btn-spinner-lg" />
+                        <span>बिल सेव्ह होत आहे...</span>
+                      </>
+                    ) : (
+                      <>
+                        <PrinterIcon size={20} color="#ffffff" />
+                        <span>{t.printBill || 'बिल बनवा आणि प्रिंट करा'}</span>
+                      </>
+                    )}
                   </button>
                 </div>
 
@@ -1389,8 +1425,17 @@ export default function BillingManagement({ setActiveTab, t }) {
                     borderRadius: 'var(--radius-sm)'
                   }}
                 >
-                  <PrinterIcon size={18} color="#ffffff" />
-                  <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
+                  {isSubmitting ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>बिल सेव्ह होत आहे...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PrinterIcon size={18} color="#ffffff" />
+                      <span>{t.printBill || 'बिल बनवा आणि प्रिंट करा'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -1457,7 +1502,14 @@ export default function BillingManagement({ setActiveTab, t }) {
                   className="btn-primary"
                   disabled={isUpdatingStock}
                 >
-                  {isUpdatingStock ? 'सेव्ह होत आहे...' : 'साठा सेव्ह करा (Save)'}
+                  {isUpdatingStock ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>सेव्ह होत आहे...</span>
+                    </>
+                  ) : (
+                    'साठा सेव्ह करा (Save)'
+                  )}
                 </button>
               </div>
             </form>

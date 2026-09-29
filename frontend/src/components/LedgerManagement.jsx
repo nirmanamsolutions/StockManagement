@@ -45,17 +45,24 @@ export default function LedgerManagement({ setActiveTab, t }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
+  const [isSubmittingAddCust, setIsSubmittingAddCust] = useState(false);
 
   // Pay Modal
   const [showPayModal, setShowPayModal] = useState(false);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('CASH');
   const [payNote, setPayNote] = useState('');
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   // Add Due Modal
   const [showAddDueModal, setShowAddDueModal] = useState(false);
   const [dueAmount, setDueAmount] = useState('');
   const [dueNote, setDueNote] = useState('');
+  const [isSubmittingDue, setIsSubmittingDue] = useState(false);
+
+  // Async Button Loading States
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   // Custom UI Dialog Modal State
   const [modalConfig, setModalConfig] = useState({
@@ -139,6 +146,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
     }
 
     try {
+      setIsSubmittingAddCust(true);
       const res = await ledgerAPI.addCustomer({ name: newCustName, phone: newCustPhone });
       setShowAddModal(false);
       setNewCustName('');
@@ -147,6 +155,8 @@ export default function LedgerManagement({ setActiveTab, t }) {
       selectCustomer(res.data.data._id);
     } catch (err) {
       showAlert(err.response?.data?.message || 'नवीन ग्राहक खाते जोडताना अडचण आली.', 'त्रुटी', 'danger');
+    } finally {
+      setIsSubmittingAddCust(false);
     }
   };
 
@@ -166,6 +176,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
     }
 
     try {
+      setIsSubmittingPayment(true);
       await ledgerAPI.recordPayment({
         customerId: selectedCustomerId,
         amount: enteredAmt,
@@ -182,6 +193,8 @@ export default function LedgerManagement({ setActiveTab, t }) {
       fetchCustomers(searchQuery);
     } catch (err) {
       showAlert(err.response?.data?.message || 'पैसे जमा करताना त्रुटी आली.', 'त्रुटी', 'danger');
+    } finally {
+      setIsSubmittingPayment(false);
     }
   };
 
@@ -199,6 +212,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
     }
 
     try {
+      setIsSubmittingDue(true);
       await ledgerAPI.addDue({
         customerId: selectedCustomerId,
         amount: enteredAmt,
@@ -214,6 +228,8 @@ export default function LedgerManagement({ setActiveTab, t }) {
       fetchCustomers(searchQuery);
     } catch (err) {
       showAlert(err.response?.data?.message || 'उधारी जोडताना अडचण आली.', 'त्रुटी', 'danger');
+    } finally {
+      setIsSubmittingDue(false);
     }
   };
 
@@ -221,11 +237,14 @@ export default function LedgerManagement({ setActiveTab, t }) {
   const handleSendWhatsAppReminder = async () => {
     if (!selectedCustomerId) return;
     try {
+      setIsSendingWhatsApp(true);
       const res = await ledgerAPI.getWhatsAppReminder(selectedCustomerId, 'शिवरत्न किराणा & जनरल स्टोअर्स');
       const { whatsappUrl } = res.data.data;
       window.open(whatsappUrl, '_blank');
     } catch (err) {
       showAlert('व्हाट्सॲप रिमांडर लिंक तयार करताना अडचण आली.', 'त्रुटी', 'danger');
+    } finally {
+      setIsSendingWhatsApp(false);
     }
   };
 
@@ -250,6 +269,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
   const handleDownloadLedgerPDF = async () => {
     try {
+      setIsDownloadingPDF(true);
       const receiptElem = document.getElementById('ledger-bill-receipt-paper');
       if (!receiptElem) return;
 
@@ -269,6 +289,8 @@ export default function LedgerManagement({ setActiveTab, t }) {
     } catch (err) {
       console.error('Failed to download PDF receipt:', err);
       showAlert('PDF पावती डाऊनलोड करताना अडचण आली.', 'त्रुटी', 'danger');
+    } finally {
+      setIsDownloadingPDF(false);
     }
   };
 
@@ -549,6 +571,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 <button
                   className="btn-secondary"
                   onClick={handleSendWhatsAppReminder}
+                  disabled={isSendingWhatsApp}
                   style={{
                     width: '100%',
                     justifyContent: 'center',
@@ -560,8 +583,17 @@ export default function LedgerManagement({ setActiveTab, t }) {
                     fontWeight: 700
                   }}
                 >
-                  <MessageCircleIcon size={16} color="#047857" />
-                  {t.sendWhatsApp}
+                  {isSendingWhatsApp ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>रिमांडर पाठवत आहे...</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircleIcon size={16} color="#047857" />
+                      {t.sendWhatsApp}
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -674,11 +706,18 @@ export default function LedgerManagement({ setActiveTab, t }) {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.85rem' }}>
-                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>
+                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)} disabled={isSubmittingAddCust}>
                   {t.cancelBtn}
                 </button>
-                <button type="submit" className="btn-primary">
-                  {t.saveCustomerBtn}
+                <button type="submit" className="btn-primary" disabled={isSubmittingAddCust}>
+                  {isSubmittingAddCust ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>साठवत आहे...</span>
+                    </>
+                  ) : (
+                    t.saveCustomerBtn
+                  )}
                 </button>
               </div>
             </form>
@@ -764,11 +803,18 @@ export default function LedgerManagement({ setActiveTab, t }) {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.85rem' }}>
-                <button type="button" className="btn-secondary" onClick={() => setShowPayModal(false)}>
+                <button type="button" className="btn-secondary" onClick={() => setShowPayModal(false)} disabled={isSubmittingPayment}>
                   {t.cancelBtn}
                 </button>
-                <button type="submit" className="btn-success">
-                  {t.confirmPaymentBtn}
+                <button type="submit" className="btn-success" disabled={isSubmittingPayment}>
+                  {isSubmittingPayment ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>जमा होत आहे...</span>
+                    </>
+                  ) : (
+                    t.confirmPaymentBtn
+                  )}
                 </button>
               </div>
             </form>
@@ -825,11 +871,18 @@ export default function LedgerManagement({ setActiveTab, t }) {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.85rem' }}>
-                <button type="button" className="btn-secondary" onClick={() => setShowAddDueModal(false)}>
+                <button type="button" className="btn-secondary" onClick={() => setShowAddDueModal(false)} disabled={isSubmittingDue}>
                   {t.cancelBtn}
                 </button>
-                <button type="submit" className="btn-danger">
-                  {t.confirmAddDueBtn || 'उधारी जोडा'}
+                <button type="submit" className="btn-danger" disabled={isSubmittingDue}>
+                  {isSubmittingDue ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>उधारी जोडत आहे...</span>
+                    </>
+                  ) : (
+                    t.confirmAddDueBtn || 'उधारी जोडा'
+                  )}
                 </button>
               </div>
             </form>
@@ -997,10 +1050,20 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 type="button"
                 className="btn-secondary"
                 onClick={handleDownloadLedgerPDF}
+                disabled={isDownloadingPDF}
                 style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
               >
-                <DownloadIcon size={16} color="var(--primary)" />
-                PDF डाऊनलोड
+                {isDownloadingPDF ? (
+                  <>
+                    <span className="btn-spinner" />
+                    <span>डाऊनलोड होत आहे...</span>
+                  </>
+                ) : (
+                  <>
+                    <DownloadIcon size={16} color="var(--primary)" />
+                    PDF डाऊनलोड
+                  </>
+                )}
               </button>
 
               <button

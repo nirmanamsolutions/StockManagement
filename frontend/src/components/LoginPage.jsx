@@ -174,8 +174,17 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
               boxShadow: '0 4px 14px var(--primary-glow)'
             }}
           >
-            <LogInIcon size={18} color="#ffffff" />
-            {isSubmitting ? 'लॉगइन होत आहे...' : t.loginBtn}
+            {isSubmitting ? (
+              <>
+                <span className="btn-spinner" />
+                <span>लॉगइन होत आहे...</span>
+              </>
+            ) : (
+              <>
+                <LogInIcon size={18} color="#ffffff" />
+                <span>{t.loginBtn}</span>
+              </>
+            )}
           </button>
         </form>
 

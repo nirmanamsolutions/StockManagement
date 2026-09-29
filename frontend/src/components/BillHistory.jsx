@@ -42,6 +42,7 @@ export default function BillHistory({ setActiveTab, t }) {
   // Selected Bill Modal for viewing receipt
   const [selectedBill, setSelectedBill] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   // Custom UI Dialog Modal State
   const [modalConfig, setModalConfig] = useState({
@@ -97,6 +98,7 @@ export default function BillHistory({ setActiveTab, t }) {
 
   const handleDownloadPDF = async () => {
     try {
+      setIsDownloadingPDF(true);
       const receiptElem = document.getElementById('history-bill-receipt-paper');
       if (!receiptElem) return;
 
@@ -116,6 +118,8 @@ export default function BillHistory({ setActiveTab, t }) {
     } catch (err) {
       console.error('Failed to download PDF receipt:', err);
       showAlert('PDF पावती डाऊनलोड करताना अडचण आली.', 'त्रुटी', 'danger');
+    } finally {
+      setIsDownloadingPDF(false);
     }
   };
 
@@ -620,10 +624,20 @@ export default function BillHistory({ setActiveTab, t }) {
                 type="button"
                 className="btn-secondary"
                 onClick={handleDownloadPDF}
+                disabled={isDownloadingPDF}
                 style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
               >
-                <DownloadIcon size={16} color="var(--primary)" />
-                PDF डाऊनलोड
+                {isDownloadingPDF ? (
+                  <>
+                    <span className="btn-spinner" />
+                    <span>डाऊनलोड होत आहे...</span>
+                  </>
+                ) : (
+                  <>
+                    <DownloadIcon size={16} color="var(--primary)" />
+                    PDF डाऊनलोड
+                  </>
+                )}
               </button>
 
               <button
