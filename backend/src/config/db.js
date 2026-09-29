@@ -42,13 +42,13 @@ const autoSeedData = async () => {
     if (count === 0) {
       console.log('🌱 Populating initial Kirana Store sample data into Database...');
       const createdStocks = await Stock.insertMany(sampleStocks);
-      
+
       const cust1 = await Customer.create({ name: 'शामराव शिंदे (Shamrao Shinde)', phone: '9822114455', totalDue: 2450 });
       const cust2 = await Customer.create({ name: 'सचिन पाटील (Sachin Patil)', phone: '9921979797', totalDue: 1200 });
       const cust3 = await Customer.create({ name: 'गणेश देशमुख (Ganesh Deshmukh)', phone: '9423556677', totalDue: 0 });
 
       const bill1 = await Bill.create({
-        billId: 'SRK101',
+        billId: 'DVS101',
         customerName: cust1.name,
         customerPhone: cust1.phone,
         items: [
@@ -101,7 +101,7 @@ const autoSeedData = async () => {
 const connectDB = async () => {
   const uri = process.env.MONGODB_URI || 'mongodb+srv://nirmanam:nirmanam6464@cluster0.whzwve7.mongodb.net/stock_management?retryWrites=true&w=majority';
   try {
-    const conn = await mongoose.connect(uri, { 
+    const conn = await mongoose.connect(uri, {
       maxPoolSize: 10,
       minPoolSize: 2,
       serverSelectionTimeoutMS: 5000,

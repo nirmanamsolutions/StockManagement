@@ -48,10 +48,11 @@ const marathiDictionary = {
   welcomeAdmin: "स्वागत आहे!",
 
   // Action Buttons on Home Screen
-  btnEditStock: "१. माल",
-  btnBill: "२. बिल",
-  btnLedgerManagement: "३. उधारी",
-  btnBillHistory: "४. जुनी बिलं",
+  btnEditStock: "माल",
+  btnUpdateStock: "बदल करा",
+  btnBill: "बिल",
+  btnLedgerManagement: "उधारी",
+  btnBillHistory: "जुनी बिलं",
 
   // Stock Management
   stockTitle: "माल साठा",

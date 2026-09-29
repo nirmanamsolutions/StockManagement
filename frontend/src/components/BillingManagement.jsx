@@ -93,6 +93,14 @@ export default function BillingManagement({ setActiveTab, t }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
+  // Pagination State for Catalog (8 items per page - 2 full rows of 4 cards)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
   // Cart Items State: [{ productId, name, unit, sellingPrice, costPrice, quantity, subtotal, baseUnit }]
   const [cartItems, setCartItems] = useState([]);
   const [mobilePosTab, setMobilePosTab] = useState('catalog'); // 'catalog' or 'cart'
@@ -478,14 +486,22 @@ export default function BillingManagement({ setActiveTab, t }) {
     setCreatedBill(null);
   };
 
-  const filteredProducts = stockList.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory ? item.category === selectedCategory : true;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredProducts = stockList
+    .filter((item) => {
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory ? item.category === selectedCategory : true;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'mr', { numeric: true, sensitivity: 'base' }));
+
+  // Pagination Calculations (12 items per page)
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+  const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (validCurrentPage - 1) * itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
 
   return (
-    <div style={{ maxWidth: '1380px', width: '100%', margin: '0 auto', padding: '0 0.75rem', paddingBottom: '6.5rem', boxSizing: 'border-box', overflowX: 'hidden' }}>
+    <div style={{ maxWidth: '100%', width: '100%', margin: '0 auto', padding: '0 1.25rem', paddingBottom: '6.5rem', boxSizing: 'border-box', overflowX: 'hidden' }}>
 
       {/* Floating Fixed Circular Back Button */}
       {setActiveTab && (
@@ -810,205 +826,273 @@ export default function BillingManagement({ setActiveTab, t }) {
                   <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.noStockFound || 'कोणताही माल सापडला नाही.'}</p>
                 </div>
               ) : (
-                <div
-                  className="pos-products-grid"
-                  style={{
-                    maxHeight: 'calc(100vh - 240px)',
-                    overflowY: 'auto',
-                    paddingRight: '4px'
-                  }}
-                >
-                  {filteredProducts.map((product) => {
-                    const cartItem = getCartItem(product._id);
-                    const isLowStock = product.quantity <= (product.minStockAlert || 5);
-                    const isOutOfStock = product.quantity <= 0;
-                    const displayName = cleanDisplayName(product.name);
+                <>
+                  <div
+                    className="pos-products-grid"
+                    style={{
+                      padding: '4px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {paginatedProducts.map((product) => {
+                      const cartItem = getCartItem(product._id);
+                      const isLowStock = product.quantity <= (product.minStockAlert || 5);
+                      const isOutOfStock = product.quantity <= 0;
+                      const displayName = cleanDisplayName(product.name);
 
-                    const curQty = cartItem ? cartItem.quantity : 0;
-                    const curSellingPrice = cartItem ? cartItem.sellingPrice : product.sellingPrice;
-                    const curUnit = cartItem ? cartItem.unit : product.unit;
-                    const curSubtotal = cartItem ? cartItem.subtotal : 0;
+                      const curQty = cartItem ? cartItem.quantity : 0;
+                      const curSellingPrice = cartItem ? cartItem.sellingPrice : product.sellingPrice;
+                      const curUnit = cartItem ? cartItem.unit : product.unit;
+                      const curSubtotal = cartItem ? cartItem.subtotal : 0;
 
-                    return (
-                      <div
-                        key={product._id}
-                        className="card-surface"
-                        style={{
-                          padding: '0.95rem',
-                          background: '#ffffff',
-                          borderRadius: 'var(--radius-md)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          gap: '0.65rem',
-                          position: 'relative',
-                          border: curQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                          boxShadow: curQty > 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-card)',
-                          transition: 'all 0.15s ease',
-                          width: '100%',
-                          maxWidth: '100%',
-                          minWidth: 0,
-                          boxSizing: 'border-box'
-                        }}
-                      >
-                        {/* Top Stock Status */}
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', marginBottom: '0.35rem' }}>
-                            <span style={{
-                              fontSize: '0.74rem',
-                              fontWeight: 700,
-                              color: isOutOfStock ? 'var(--danger)' : (isLowStock ? '#d97706' : 'var(--success)')
-                            }}>
-                              {isOutOfStock ? 'साठा ०' : `साठा: ${formatQuantity(product.quantity, product.unit)} ${getMarathiUnitLabel(product.unit)}`}
-                            </span>
-                          </div>
-
-                          {/* Product Name */}
-                          <h4 style={{
-                            fontSize: '0.98rem',
-                            fontWeight: 800,
-                            color: 'var(--text-heading)',
-                            marginBottom: '0.5rem',
-                            lineHeight: 1.25,
-                            wordBreak: 'break-word'
-                          }}>
-                            {displayName}
-                          </h4>
-                        </div>
-
-                        {/* CONTROLS ON THE CATALOG CARD (Cost Price, Selling Rate Tag, Quantity & Unit Dropdown) */}
-                        <div style={{
-                          background: '#f8fafc',
-                          border: '1px solid var(--border-color)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '0.65rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.5rem',
-                          width: '100%',
-                          boxSizing: 'border-box'
-                        }}>
-
-                          {/* Cost Price & Selling Rate Tag */}
-                          <div style={{
+                      return (
+                        <div
+                          key={product._id}
+                          className="card-surface"
+                          style={{
+                            padding: '0.95rem',
+                            background: '#ffffff',
+                            borderRadius: 'var(--radius-md)',
                             display: 'flex',
-                            alignItems: 'center',
+                            flexDirection: 'column',
                             justifyContent: 'space-between',
-                            gap: '0.5rem',
-                            background: '#eef2ff',
-                            borderRadius: '6px',
-                            padding: '0.4rem 0.65rem',
-                            border: '1px solid #c7d2fe',
+                            gap: '0.65rem',
+                            position: 'relative',
+                            border: curQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                            boxShadow: curQty > 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-card)',
+                            transition: 'all 0.15s ease',
                             width: '100%',
-                            boxSizing: 'border-box',
-                            flexWrap: 'wrap'
-                          }}>
-                            <div>
-                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#475569', display: 'block' }}>खरेदी दर:</span>
-                              <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#334155' }}>
-                                ₹{formatAmount(product.costPrice || 0)}
-                              </span>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3730a3', display: 'block' }}>विक्री दर :</span>
-                              <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary)' }}>
-                                ₹{formatAmount(product.sellingPrice)} <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)' }}>/ {getMarathiUnitLabel(product.unit)}</span>
-                              </span>
-                            </div>
+                            maxWidth: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          {/* Product Header */}
+                          <div>
+                            <h4 style={{
+                              fontSize: '0.98rem',
+                              fontWeight: 800,
+                              color: 'var(--text-heading)',
+                              marginBottom: '0.5rem',
+                              lineHeight: 1.25,
+                              wordBreak: 'break-word'
+                            }}>
+                              {displayName}
+                            </h4>
                           </div>
 
-                          {/* Quantity & Unit Controls */}
+                          {/* CONTROLS ON THE CATALOG CARD (Cost Price, Selling Rate Tag, Quantity & Unit Dropdown) */}
                           <div style={{
+                            background: '#f8fafc',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '0.65rem',
                             display: 'flex',
-                            alignItems: 'center',
+                            flexDirection: 'column',
                             gap: '0.5rem',
                             width: '100%',
                             boxSizing: 'border-box'
                           }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px' }}>प्रमाण:</label>
-                              <input
-                                type="number"
-                                inputMode={isIntegerUnit(curUnit) ? "numeric" : "decimal"}
-                                step={isIntegerUnit(curUnit) ? "1" : "0.01"}
-                                min="0"
-                                placeholder="0"
-                                value={curQty > 0 ? curQty : ''}
-                                onChange={(e) => handleCatalogCardFieldChange(product, 'quantity', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  height: '36px',
-                                  padding: '0.25rem 0.35rem',
-                                  fontSize: '0.9rem',
-                                  fontWeight: 800,
-                                  border: '1px solid var(--border-color)',
-                                  borderRadius: '6px',
-                                  textAlign: 'center',
-                                  background: '#ffffff',
-                                  boxSizing: 'border-box'
-                                }}
-                              />
+
+                            {/* Cost Price & Selling Rate Tag */}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.5rem',
+                              background: '#eef2ff',
+                              borderRadius: '6px',
+                              padding: '0.4rem 0.65rem',
+                              border: '1px solid #c7d2fe',
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              flexWrap: 'wrap'
+                            }}>
+                              <div>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#475569', display: 'block' }}>खरेदी दर:</span>
+                                <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#334155' }}>
+                                  ₹{formatAmount(product.costPrice || 0)}
+                                </span>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3730a3', display: 'block' }}>विक्री दर :</span>
+                                <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary)' }}>
+                                  ₹{formatAmount(product.sellingPrice)} <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)' }}>/ {getMarathiUnitLabel(product.unit)}</span>
+                                </span>
+                              </div>
                             </div>
 
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px' }}>युनिट:</label>
-                              <CustomSelect
-                                compact={true}
-                                value={normalizeUnit(curUnit)}
-                                onChange={(val) => handleCatalogCardFieldChange(product, 'unit', val)}
-                                options={getConvertibleUnits(product.unit).map((u) => ({ value: u.id, label: u.label }))}
-                              />
+                            {/* Quantity & Unit Controls */}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              width: '100%',
+                              boxSizing: 'border-box'
+                            }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px' }}>प्रमाण:</label>
+                                <input
+                                  type="number"
+                                  inputMode={isIntegerUnit(curUnit) ? "numeric" : "decimal"}
+                                  step={isIntegerUnit(curUnit) ? "1" : "0.01"}
+                                  min="0"
+                                  placeholder="0"
+                                  value={curQty > 0 ? curQty : ''}
+                                  onChange={(e) => handleCatalogCardFieldChange(product, 'quantity', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    height: '36px',
+                                    padding: '0.25rem 0.35rem',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 800,
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '6px',
+                                    textAlign: 'center',
+                                    background: '#ffffff',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '2px' }}>युनिट:</label>
+                                <CustomSelect
+                                  compact={true}
+                                  value={normalizeUnit(curUnit)}
+                                  onChange={(val) => handleCatalogCardFieldChange(product, 'unit', val)}
+                                  options={getConvertibleUnits(product.unit).map((u) => ({ value: u.id, label: u.label }))}
+                                />
+                              </div>
                             </div>
+
+                          </div>
+
+                          {/* Card Footer: Live Subtotal & Add/Remove Action */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem', width: '100%', boxSizing: 'border-box' }}>
+                            <div>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण रक्कम:</span>
+                              <span style={{ fontSize: '1.08rem', fontWeight: 800, color: 'var(--primary)' }}>
+                                ₹{formatAmount(curSubtotal)}
+                              </span>
+                            </div>
+
+                            {curQty === 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => handleIncrement(product)}
+                                className="btn-primary"
+                                style={{ padding: '0.45rem 0.95rem', fontSize: '0.84rem', height: '36px' }}
+                              >
+                                <PlusIcon size={15} /> जोडा
+                              </button>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDecrement(product)}
+                                  className="btn-secondary"
+                                  style={{ padding: '0.3rem 0.55rem', fontSize: '0.75rem', height: '36px', width: '36px', justifyContent: 'center' }}
+                                  title="कम करा"
+                                >
+                                  <MinusIcon size={14} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(product._id)}
+                                  style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)', padding: '0.3rem 0.55rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', fontSize: '0.72rem', fontWeight: 700, height: '36px' }}
+                                  title="काढून टाका"
+                                >
+                                  <TrashIcon size={14} />
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                         </div>
+                      );
+                    })}
+                  </div>
 
-                        {/* Card Footer: Live Subtotal & Add/Remove Action */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem', width: '100%', boxSizing: 'border-box' }}>
-                          <div>
-                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण रक्कम:</span>
-                            <span style={{ fontSize: '1.08rem', fontWeight: 800, color: 'var(--primary)' }}>
-                              ₹{formatAmount(curSubtotal)}
-                            </span>
-                          </div>
-
-                          {curQty === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => handleIncrement(product)}
-                              className="btn-primary"
-                              style={{ padding: '0.45rem 0.95rem', fontSize: '0.84rem', height: '36px' }}
-                            >
-                              <PlusIcon size={15} /> जोडा
-                            </button>
-                          ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleDecrement(product)}
-                                className="btn-secondary"
-                                style={{ padding: '0.3rem 0.55rem', fontSize: '0.75rem', height: '36px', width: '36px', justifyContent: 'center' }}
-                                title="कम करा"
-                              >
-                                <MinusIcon size={14} />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(product._id)}
-                                style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)', padding: '0.3rem 0.55rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', fontSize: '0.72rem', fontWeight: 700, height: '36px' }}
-                                title="काढून टाका"
-                              >
-                                <TrashIcon size={14} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
+                  {/* Catalog Pagination Bar */}
+                  {filteredProducts.length > 0 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.75rem 1rem',
+                        background: '#ffffff',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-color)',
+                        boxShadow: 'var(--shadow-card)',
+                        marginTop: '0.85rem',
+                        flexWrap: 'wrap',
+                        gap: '0.65rem',
+                        fontSize: '0.82rem'
+                      }}
+                    >
+                      <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                        दाखवत आहे: <strong>{startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredProducts.length)}</strong> (एकूण <strong>{filteredProducts.length}</strong> माल) • पान <strong>{validCurrentPage}</strong> / {totalPages}
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={validCurrentPage <= 1}
+                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                          style={{
+                            padding: '0.3rem 0.65rem',
+                            fontSize: '0.78rem',
+                            opacity: validCurrentPage <= 1 ? 0.5 : 1,
+                            cursor: validCurrentPage <= 1 ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          ← मागे
+                        </button>
+
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setCurrentPage(pageNum)}
+                            style={{
+                              padding: '0.3rem 0.55rem',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              borderRadius: 'var(--radius-sm)',
+                              border: '1px solid',
+                              borderColor: pageNum === validCurrentPage ? 'var(--primary)' : 'var(--border-color)',
+                              background: pageNum === validCurrentPage ? 'var(--primary)' : '#ffffff',
+                              color: pageNum === validCurrentPage ? '#ffffff' : 'var(--text-heading)',
+                              cursor: 'pointer',
+                              minWidth: '30px'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={validCurrentPage >= totalPages}
+                          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                          style={{
+                            padding: '0.3rem 0.65rem',
+                            fontSize: '0.78rem',
+                            opacity: validCurrentPage >= totalPages ? 0.5 : 1,
+                            cursor: validCurrentPage >= totalPages ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          पुढे →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
             </div>
@@ -1056,14 +1140,31 @@ export default function BillingManagement({ setActiveTab, t }) {
                             <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>
                               {item.name}
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(item.productId)}
-                              style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.2rem' }}
-                              title="काढून टाका"
-                            >
-                              <TrashIcon size={16} />
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  color: '#334155',
+                                  background: '#eef2ff',
+                                  border: '1px solid #c7d2fe',
+                                  padding: '0.2rem 0.5rem',
+                                  borderRadius: '4px',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title="खरेदी भाव (बदलता येत नाही)"
+                              >
+                                खरेदी भाव: ₹{formatAmount(item.costPrice || 0)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(item.productId)}
+                                style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.2rem' }}
+                                title="काढून टाका"
+                              >
+                                <TrashIcon size={16} />
+                              </button>
+                            </div>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1378,24 +1479,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
             </div>
 
-            {/* Floating Mobile Cart Bar (When on Catalog View) */}
-            {mobilePosTab === 'catalog' && cartItems.length > 0 && (
-              <div
-                className="mobile-pos-floating-bar no-print"
-                onClick={() => setMobilePosTab('cart')}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                  <ShoppingCartIcon size={20} color="#ffffff" />
-                  <span style={{ fontWeight: 800, fontSize: '0.92rem' }}>
-                    {cartItems.length} वस्तू जोडल्या • ₹{formatAmount(grandTotal)}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem' }}>
-                  <span>बिल पहा</span>
-                  <ArrowRightIcon size={16} color="#ffffff" />
-                </div>
-              </div>
-            )}
+
 
             {/* Sticky Mobile Checkout Bar (When on Cart View) */}
             {mobilePosTab === 'cart' && cartItems.length > 0 && (

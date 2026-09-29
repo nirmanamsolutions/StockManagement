@@ -664,24 +664,7 @@ select.select-compact {
     font-weight: 800;
   }
 
-  /* Responsive Adjustments for Floating Mobile POS Cart Switcher */
-  .mobile-pos-floating-bar {
-    display: flex;
-    position: fixed;
-    bottom: calc(60px + 12px);
-    left: 0.85rem;
-    right: 0.85rem;
-    z-index: 9998;
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    color: #ffffff;
-    padding: 0.85rem 1.2rem;
-    border-radius: var(--radius-md);
-    box-shadow: 0 8px 25px rgba(67, 56, 202, 0.4);
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    animation: floatSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  }
+
 }
 
 /* Sticky Mobile Checkout Bar in Cart view */
@@ -732,7 +715,7 @@ select.select-compact {
 /* Responsive Blinkit POS catalog + cart grid layout */
 .billing-pos-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 450px);
+  grid-template-columns: minmax(0, 1fr) 380px;
   gap: 1.25rem;
   align-items: start;
   width: 100%;
@@ -756,7 +739,7 @@ select.select-compact {
 
 .pos-products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1rem;
   width: 100%;
   max-width: 100%;

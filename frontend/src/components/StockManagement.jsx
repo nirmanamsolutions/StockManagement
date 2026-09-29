@@ -853,7 +853,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                       <span>{editId ? 'अपडेट होत आहे...' : 'साठवत आहे...'}</span>
                     </>
                   ) : (
-                    editId ? (t.btnEditStock || 'अपडेट करा') : (t.saveStockBtn || 'साठा सेव्ह करा')
+                    editId ? (t.btnUpdateStock || 'बदल करा') : (t.saveStockBtn || 'साठा सेव्ह करा')
                   )}
                 </button>
               </div>

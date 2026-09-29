@@ -117,7 +117,7 @@ async function seedDatabase() {
     // 3. Create Authentic Bills
     console.log('🧾 Creating Store POS Bills...');
     const bill1 = await Bill.create({
-      billId: 'SRK101',
+      billId: 'DVS101',
       customerName: cust2.name,
       customerPhone: cust2.phone,
       items: [
@@ -132,7 +132,7 @@ async function seedDatabase() {
     });
 
     const bill2 = await Bill.create({
-      billId: 'SRK102',
+      billId: 'DVS102',
       customerName: cust3.name,
       customerPhone: cust3.phone,
       items: [
