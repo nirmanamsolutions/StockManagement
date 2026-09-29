@@ -584,10 +584,8 @@ export default function BillingManagement({ setActiveTab, t }) {
                 <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif' }}>
                   {t.receiptHeaderTitle || 'शिवरत्न किराणा & जनरल स्टोअर्स'}
                 </h2>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>
-                  {t.receiptHeaderSubtitle || 'किराणा आणि जनरल स्टोअर्स खंडोबाचीवाडी'}
-                </div>
-                <div style={{ fontSize: '0.74rem', color: '#333' }}>
+
+                <div style={{ fontSize: '0.9rem', color: '#333' }}>
                   {t.receiptHeaderAddress || 'खंडोबाचीवाडी, MOB NO:- 9763950797'}
                 </div>
               </div>
