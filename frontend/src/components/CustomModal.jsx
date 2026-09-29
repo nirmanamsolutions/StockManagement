@@ -148,7 +148,7 @@ export default function CustomModal({
               onClick={() => onCancel && onCancel()}
               style={{ padding: '0.55rem 1.15rem', fontSize: '0.88rem' }}
             >
-              {cancelText || 'रद्द करा (Cancel)'}
+              {cancelText || 'रद्द करा'}
             </button>
           )}
 
@@ -159,7 +159,7 @@ export default function CustomModal({
             style={{ padding: '0.55rem 1.35rem', fontSize: '0.88rem', fontWeight: 800 }}
             autoFocus
           >
-            {confirmText || (isConfirm ? 'होय (Confirm)' : 'ठीक आहे (OK)')}
+            {confirmText || (isConfirm ? 'होय' : 'ठीक आहे')}
           </button>
         </div>
       </div>

@@ -63,7 +63,7 @@ export default function BillHistory({ setActiveTab, t }) {
       message: message,
       onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
       onCancel: null,
-      confirmText: 'ठीक आहे (OK)',
+      confirmText: 'ठीक आहे',
       cancelText: ''
     });
   };
@@ -485,7 +485,7 @@ export default function BillHistory({ setActiveTab, t }) {
             {/* Modal Header Bar */}
             <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-heading)' }}>
-                Bill Receipt #{selectedBill.billId}
+                बिलाची पावती #{selectedBill.billId}
               </h3>
 
               <button
@@ -531,9 +531,9 @@ export default function BillHistory({ setActiveTab, t }) {
               {/* Customer & Invoice Meta Header */}
               <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '0.45rem 0', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                 <div>
-                  <div><strong>NAME :</strong> {selectedBill.customerName}</div>
+                  <div><strong>नाव :</strong> {selectedBill.customerName}</div>
                   <div>
-                    <strong>PH :</strong> {selectedBill.customerPhone ? (
+                    <strong>मोबाईल :</strong> {selectedBill.customerPhone ? (
                       <a href={`tel:${selectedBill.customerPhone}`} style={{ color: '#000000', fontWeight: 800, textDecoration: 'underline' }}>
                         {selectedBill.customerPhone}
                       </a>
@@ -541,9 +541,9 @@ export default function BillHistory({ setActiveTab, t }) {
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div><strong>Bill No. :</strong> {selectedBill.billId}</div>
-                  <div><strong>Date :</strong> {new Date(selectedBill.createdAt).toLocaleDateString('en-GB')}</div>
-                  <div><strong>Time :</strong> {new Date(selectedBill.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                  <div><strong>बिल नंबर :</strong> {selectedBill.billId}</div>
+                  <div><strong>दिनांक :</strong> {new Date(selectedBill.createdAt).toLocaleDateString('en-GB')}</div>
+                  <div><strong>वेळ :</strong> {new Date(selectedBill.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
                 </div>
               </div>
 
@@ -551,12 +551,12 @@ export default function BillHistory({ setActiveTab, t }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>S/N</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>Particulars</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>अ.क्र.</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>विवरण</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>प्रमाण</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>युनिट</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>दर</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>रक्कम</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -565,7 +565,7 @@ export default function BillHistory({ setActiveTab, t }) {
                       <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
                       <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'नग'}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
@@ -575,7 +575,7 @@ export default function BillHistory({ setActiveTab, t }) {
 
               {/* Total Items & Total Amount */}
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {selectedBill.items.length}</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>एकूण वस्तू : {selectedBill.items.length}</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
                   एकूण रक्कम : {formatAmount(selectedBill.totalAmount)}
                 </span>
@@ -584,23 +584,23 @@ export default function BillHistory({ setActiveTab, t }) {
               {/* Payment Details Section */}
               <div style={{ borderBottom: '1px solid #000', paddingBottom: '0.45rem', marginBottom: '0.65rem', fontSize: '0.8rem' }}>
                 <div style={{ textAlign: 'center', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '0.05em' }}>
-                  PAYMENT DETAILS
+                  पेमेंट माहिती
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <div>
-                    <div>CASH REC. : {selectedBill.paymentType === 'CASH' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
-                    <div>PHONE PAY : {selectedBill.paymentType === 'UPI' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
+                    <div>रोख जमा : {selectedBill.paymentType === 'CASH' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
+                    <div>फोनपे / युपीआय : {selectedBill.paymentType === 'UPI' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div>RETURN AMT : 0</div>
-                    <div>CREDIT : {selectedBill.paymentStatus === 'UNPAID' ? formatAmount(selectedBill.totalAmount) : '0'}</div>
+                    <div>परत रक्कम : 0</div>
+                    <div>उधारी : {selectedBill.paymentStatus === 'UNPAID' ? formatAmount(selectedBill.totalAmount) : '0'}</div>
                   </div>
                 </div>
               </div>
 
               {/* Footer Notice */}
               <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.76rem', color: '#444' }}>
-                धन्यवाद, पुन्हा या! • Thank You!
+                धन्यवाद, पुन्हा या!
               </div>
             </div>
 
@@ -613,7 +613,7 @@ export default function BillHistory({ setActiveTab, t }) {
                 style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem' }}
               >
                 <PrinterIcon size={16} />
-                {t.printBtn || 'Print Receipt'}
+                {t.printBtn || 'पावती प्रिंट करा'}
               </button>
 
               <button
@@ -623,7 +623,7 @@ export default function BillHistory({ setActiveTab, t }) {
                 style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
               >
                 <DownloadIcon size={16} color="var(--primary)" />
-                Download PDF
+                PDF डाऊनलोड
               </button>
 
               <button
@@ -632,7 +632,7 @@ export default function BillHistory({ setActiveTab, t }) {
                 onClick={() => setShowReceiptModal(false)}
                 style={{ padding: '0.55rem 1.2rem', fontSize: '0.88rem' }}
               >
-                {t.closeBtn || 'Close'}
+                {t.closeBtn || 'बंद करा'}
               </button>
             </div>
 

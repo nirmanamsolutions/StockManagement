@@ -170,20 +170,14 @@ exports.getBillById = async (req, res, next) => {
   }
 };
 
-// @desc    Manual trigger to clean up paid bills older than 30 days
+// @desc    Manual trigger to clean up paid bills (Disabled for permanent retention)
 // @route   DELETE /api/bills/cleanup-paid
 exports.cleanupPaidBills = async (req, res, next) => {
   try {
-    await runAutoCleanup();
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const result = await Bill.deleteMany({
-      createdAt: { $lt: thirtyDaysAgo },
-    });
-
     res.status(200).json({
       success: true,
-      message: `Cleaned up bills older than 30 days`,
-      deletedCount: result.deletedCount,
+      message: `Permanent data retention enabled. No bills were deleted.`,
+      deletedCount: 0,
     });
   } catch (error) {
     next(error);

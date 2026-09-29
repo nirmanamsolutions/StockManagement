@@ -90,35 +90,25 @@ export default function Navbar({ setActiveTab, t, onLogout }) {
           </div>
         </div>
 
-        {/* Right Section: Logout Button */}
-        <div
-          className="navbar-actions"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            flexShrink: 0
-          }}
-        >
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              className="btn-danger logout-btn"
-              title="Logout from Store POS Admin"
-              style={{
-                padding: '0.45rem 0.65rem',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem'
-              }}
-            >
-              <LogOutIcon size={16} color="#ffffff" />
-              <span className="logout-text">{t.logoutBtn || 'बाहेर पडणे'}</span>
-            </button>
-          )}
-        </div>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="btn-danger logout-btn"
+            title="सिस्टममधून बाहेर पडा"
+            style={{
+              padding: '0.45rem 0.65rem',
+              borderRadius: '8px',
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem'
+            }}
+          >
+            <LogOutIcon size={16} color="#ffffff" />
+            <span className="logout-text">{t.logoutBtn || 'बाहेर पडणे'}</span>
+          </button>
+        )}
+
 
       </div>
     </header>

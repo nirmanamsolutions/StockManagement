@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  StoreIcon, 
-  UserIcon, 
-  LockIcon, 
-  EyeIcon, 
-  EyeOffIcon, 
-  ShieldCheckIcon,
+import LegalDocumentation from './LegalDocumentation';
+import {
+  StoreIcon,
+  UserIcon,
+  LockIcon,
+  EyeIcon,
+  EyeOffIcon,
   LogInIcon,
-  TriangleAlertIcon,
-  KeyRoundIcon
+  TriangleAlertIcon
 } from '@animateicons/react/lucide';
 
 export default function LoginPage({ onLogin, lang, setLang, t }) {
@@ -34,11 +33,7 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
     }, 300);
   };
 
-  const handleAutofillDemo = () => {
-    setUsername('9763950797');
-    setPassword('kirana@123');
-    setErrorMsg('');
-  };
+  const [showLegalModal, setShowLegalModal] = useState(false);
 
   return (
     <div style={{
@@ -65,7 +60,7 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
         textAlign: 'center',
         position: 'relative'
       }}>
-        
+
         {/* Animated Brand Header */}
         <div style={{ display: 'inline-flex', background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))', padding: '1rem', borderRadius: '50%', marginBottom: '1rem', boxShadow: '0 8px 20px var(--primary-glow)' }}>
           <StoreIcon size={34} color="#ffffff" />
@@ -101,7 +96,7 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} style={{ textAlign: 'left' }}>
-          
+
           {/* Username Field */}
           <div style={{ marginBottom: '1.15rem' }}>
             <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
@@ -116,7 +111,7 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
                 className="input-field"
                 required
                 maxLength={10}
-                placeholder="9763950797"
+                placeholder="मोबाईल नंबर टाका"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 style={{ paddingLeft: '2.6rem', height: '42px' }}
@@ -138,7 +133,7 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
                 type={showPassword ? 'text' : 'password'}
                 className="input-field"
                 required
-                placeholder="••••"
+                placeholder="पासवर्ड टाका"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ paddingLeft: '2.6rem', paddingRight: '2.6rem', height: '42px' }}
@@ -180,53 +175,55 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
             }}
           >
             <LogInIcon size={18} color="#ffffff" />
-            {isSubmitting ? 'Logging in...' : t.loginBtn}
+            {isSubmitting ? 'लॉगइन होत आहे...' : t.loginBtn}
           </button>
         </form>
 
-        {/* Demo Credentials Box */}
-        <div style={{
-          marginTop: '1.6rem',
-          padding: '0.85rem',
-          background: 'var(--bg-surface-raised)',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px dashed var(--border-highlight)',
-          fontSize: '0.78rem',
-          color: 'var(--text-body)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '0.45rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, color: 'var(--text-heading)' }}>
-            <ShieldCheckIcon size={16} color="var(--success)" />
-            <span>{t.securityNotice}</span>
-          </div>
-          
+      </div>
+
+      {/* Footer Branding & Legal Documentation Access */}
+      <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        <div>© {new Date().getFullYear()} {t.appName} • निर्माम सोल्युशन्स</div>
+        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', fontWeight: 700 }}>
           <button
-            type="button"
-            onClick={handleAutofillDemo}
-            className="btn-secondary"
-            style={{
-              padding: '0.25rem 0.75rem',
-              fontSize: '0.74rem',
-              minHeight: '28px',
-              fontWeight: 700,
-              background: '#ffffff',
-              borderColor: 'var(--primary-light)',
-              color: 'var(--primary)'
-            }}
+            onClick={() => setShowLegalModal(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}
           >
-            <KeyRoundIcon size={13} color="var(--primary)" /> Autofill Credentials (9763950797 / kirana@123)
+            📜 {t.footerTerms || 'Terms of Service'}
+          </button>
+          <span>•</span>
+          <button
+            onClick={() => setShowLegalModal(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}
+          >
+            🛡️ {t.footerPrivacy || 'Privacy Policy'}
+          </button>
+          <span>•</span>
+          <button
+            onClick={() => setShowLegalModal(true)}
+            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}
+          >
+            🏛️ {t.footerLegalCenter || 'Legal Documentation'}
           </button>
         </div>
-
       </div>
 
-      {/* Footer Branding */}
-      <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-        © {new Date().getFullYear()} {t.appName} • {t.shopTagline}
-      </div>
+      {/* Legal Documentation Modal on Login Page */}
+      {showLegalModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(5px)',
+          zIndex: 10000,
+          overflowY: 'auto',
+          padding: '1.5rem 1rem'
+        }}>
+          <div style={{ maxWidth: '1100px', margin: '0 auto', background: '#ffffff', borderRadius: 'var(--radius-lg)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+            <LegalDocumentation lang={lang} onBack={() => setShowLegalModal(false)} fullScreen={true} />
+          </div>
+        </div>
+      )}
 
     </div>
   );

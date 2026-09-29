@@ -8,6 +8,8 @@ import BillHistory from './components/BillHistory';
 import LoginPage from './components/LoginPage';
 import MobileBottomNav from './components/MobileBottomNav';
 import WebsitePageLoader from './components/WebsitePageLoader';
+import LegalDocumentation from './components/LegalDocumentation';
+import Footer from './components/Footer';
 import { translations } from './i18n/translations';
 
 export default function App() {
@@ -25,7 +27,8 @@ export default function App() {
     stock: 'स्टॉक माहिती व वस्तूंची यादी लोड होत आहे...',
     billing: 'स्मार्ट बिलिंग काउंटर उघडत आहे...',
     ledger: 'ग्राहक उधारी व जमा खाते लोड होत आहे...',
-    history: 'पूर्वीच्या बिलांचा इतिहास लोड होत आहे...'
+    history: 'पूर्वीच्या बिलांचा इतिहास लोड होत आहे...',
+    legal: 'कायदेशीर अटी व गोपनीयतेची माहिती लोड होत आहे...'
   };
 
   const setActiveTab = (tab, pushHistory = true) => {
@@ -118,7 +121,12 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', paddingBottom: '5.5rem', background: 'var(--bg-base)' }}>
+    <div className="app-root-container" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      background: 'var(--bg-base)'
+    }}>
       {isPageLoading && (
         <WebsitePageLoader 
           text="शिवरत्न किराणा & जनरल स्टोअर्स" 
@@ -136,7 +144,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main className="page-enter-animation" key={activeTab}>
+      <main className="page-enter-animation" key={activeTab} style={{ flex: 1, width: '100%' }}>
         {activeTab === 'home' && (
           <HomeScreen 
             setActiveTab={setActiveTab} 
@@ -174,7 +182,20 @@ export default function App() {
             t={t} 
           />
         )}
+
+        {activeTab === 'legal' && (
+          <LegalDocumentation 
+            lang={lang} 
+            onBack={() => setActiveTab('home')} 
+          />
+        )}
       </main>
+
+      <Footer 
+        setActiveTab={setActiveTab} 
+        lang={lang} 
+        t={t} 
+      />
 
       <MobileBottomNav 
         activeTab={activeTab} 
@@ -184,4 +205,5 @@ export default function App() {
     </div>
   );
 }
+
 

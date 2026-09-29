@@ -209,7 +209,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
             flexDirection: 'column',
             justifyContent: 'space-between'
           }}
-          title="Click to view full stock inventory"
+          title="पूर्ण माल साठा पहा"
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 700 }}>{t.totalProductsLabel}</span>
@@ -248,7 +248,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
             flexDirection: 'column',
             justifyContent: 'space-between'
           }}
-          title="Click to view Katha customers ledger"
+          title="ग्राहक उधारी खातं पहा"
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 700 }}>{t.kathaCustomersLabel}</span>
@@ -288,7 +288,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
             flexDirection: 'column',
             justifyContent: 'space-between'
           }}
-          title="Click to see list of customers with pending due amounts"
+          title="बाकी उधारी असणाऱ्या ग्राहकांची यादी पहा"
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ color: stats.totalDueAmount > 0 ? 'var(--danger)' : 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 700 }}>{t.totalDueLabel}</span>
@@ -321,13 +321,14 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(28, 25, 23, 0.65)',
-          backdropFilter: 'blur(3px)',
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(5px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          padding: '1rem'
+          zIndex: 100000,
+          overflowY: 'auto',
+          padding: '1.5rem 1rem'
         }}>
           <div className="card-surface" style={{ width: '100%', maxWidth: '560px', padding: '1.6rem', background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
@@ -346,7 +347,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
             <div style={{ maxHeight: '320px', overflowY: 'auto', marginBottom: '1.25rem' }}>
               {lowStockItems.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                  ✓ All stock levels are sufficient! No low stock alerts.
+                  ✓ सर्व मालाचा साठा पुरेसा आहे! कोणतीही वॉर्निंग नाही.
                 </p>
               ) : (
                 lowStockItems.map((item) => (
@@ -367,7 +368,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
                     <div>
                       <h4 style={{ fontSize: '0.92rem', margin: 0, color: 'var(--text-heading)', fontWeight: 700 }}>{item.name}</h4>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.15rem 0 0 0' }}>
-                        {t.category}: <strong>{item.category || 'General Kirana'}</strong> • {t.minStockAlert}: {item.minStockAlert || 5} {item.unit}
+                        {t.category}: <strong>{item.category || 'जनरल किराणा'}</strong> • {t.minStockAlert}: {item.minStockAlert || 5} {item.unit}
                       </p>
                     </div>
 
@@ -413,13 +414,14 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(28, 25, 23, 0.65)',
-          backdropFilter: 'blur(3px)',
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(5px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          padding: '1rem'
+          zIndex: 100000,
+          overflowY: 'auto',
+          padding: '1.5rem 1rem'
         }}>
           <div className="card-surface" style={{ width: '100%', maxWidth: '560px', padding: '1.6rem', background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
@@ -438,7 +440,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
             <div style={{ maxHeight: '320px', overflowY: 'auto', marginBottom: '1.25rem' }}>
               {dueCustomers.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                  ✓ All customer Katha dues are fully paid! No pending credit amounts.
+                  ✓ सर्व ग्राहकांची उधारी जमा झाली आहे! कोणतीही उधारी बाकी नाही.
                 </p>
               ) : (
                 dueCustomers.map((cust) => (

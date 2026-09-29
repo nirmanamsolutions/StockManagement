@@ -40,28 +40,43 @@ const normalizeUnit = (u) => {
   return norm;
 };
 
+const getMarathiUnitLabel = (unitStr) => {
+  const norm = normalizeUnit(unitStr);
+  const map = {
+    kg: 'किलोग्राम',
+    g: 'ग्राम',
+    liter: 'लिटर',
+    ml: 'मिलीलिटर',
+    quintal: 'क्विंटल',
+    unit: 'नग',
+    meter: 'मीटर',
+  };
+  return map[norm] || norm;
+};
+
 // Logical unit choices available for converting items
 const getConvertibleUnits = (baseUnitStr) => {
   const base = normalizeUnit(baseUnitStr);
   if (base === 'kg' || base === 'g') {
     return [
-      { id: 'kg', label: 'kg' },
-      { id: 'g', label: 'g' },
+      { id: 'kg', label: 'किलोग्राम' },
+      { id: 'g', label: 'ग्राम' },
     ];
   }
   if (base === 'liter' || base === 'ml') {
     return [
-      { id: 'liter', label: 'liter' },
-      { id: 'ml', label: 'ml' },
+      { id: 'liter', label: 'लिटर' },
+      { id: 'ml', label: 'मिलीलिटर' },
     ];
   }
   if (base === 'quintal') {
     return [
-      { id: 'quintal', label: 'quintal' },
-      { id: 'kg', label: 'kg' },
+      { id: 'quintal', label: 'क्विंटल' },
+      { id: 'kg', label: 'किलोग्राम' },
     ];
   }
-  return [{ id: base, label: base }];
+  const labelMap = { unit: 'नग', meter: 'मीटर', kg: 'किलोग्राम', g: 'ग्राम', liter: 'लिटर', ml: 'मिलीलिटर', quintal: 'क्विंटल' };
+  return [{ id: base, label: labelMap[base] || base }];
 };
 
 // Helper to clean bracketed English words from titles
@@ -121,7 +136,7 @@ export default function BillingManagement({ setActiveTab, t }) {
       message: message,
       onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
       onCancel: null,
-      confirmText: 'ठीक आहे (OK)',
+      confirmText: 'ठीक आहे',
       cancelText: ''
     });
   };
@@ -174,7 +189,7 @@ export default function BillingManagement({ setActiveTab, t }) {
     if (!quickStockItem) return;
     const qtyNum = parseFloat(quickStockQty);
     if (isNaN(qtyNum) || qtyNum < 0) {
-      showAlert('कृपया वैध साठा (Valid Stock Qty) प्रविष्ट करा', 'सावधानी', 'warning');
+      showAlert('कृपया योग्य साठा प्रविष्ट करा', 'सावधानी', 'warning');
       return;
     }
 
@@ -359,20 +374,24 @@ export default function BillingManagement({ setActiveTab, t }) {
   // Submit Final Bill Generation
   const handleFinalSubmitBill = async () => {
     if (cartItems.length === 0) {
-      showAlert(t.cartEmpty || 'बिलामध्ये कोणताही माल जोडलेला नाही!', 'सावधानी', 'warning');
+      showAlert('बिलामध्ये कोणताही माल जोडलेला नाही! कृपया प्रथम माल निवडा.', 'सावधानी', 'warning');
       return;
     }
 
-    const nameToUse = customerName.trim() || (paymentStatus === 'PAID' ? 'नियमित ग्राहक' : '');
-    const phoneToUse = customerPhone.trim() || (paymentStatus === 'PAID' ? '9999999999' : '');
+    const nameToUse = customerName.trim();
+    if (!nameToUse) {
+      showAlert('कृपया ग्राहकाचे नाव प्रविष्ट करा! सर्व रकाने भरणे बंधनकारक आहे.', 'सावधानी', 'warning');
+      return;
+    }
 
-    if (paymentStatus === 'UNPAID' && (!nameToUse || !isValidPhone(phoneToUse))) {
+    const phoneToUse = customerPhone.trim();
+    if (!phoneToUse || !isValidPhone(phoneToUse)) {
+      showAlert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका! सर्व रकाने भरणे बंधनकारक आहे.', 'सावधानी', 'warning');
+      return;
+    }
+
+    if (paymentStatus === 'UNPAID' && !selectedCustomerId && !phoneToUse) {
       showAlert('उधारी बिलासाठी ग्राहकाचे नाव आणि १० अंकांचा मोबाईल नंबर आवश्यक आहे!', 'सावधानी', 'warning');
-      return;
-    }
-
-    if (phoneToUse && phoneToUse !== '9999999999' && !isValidPhone(phoneToUse)) {
-      showAlert('कृपया १० अंकांचा योग्य मोबाईल नंबर टाका!', 'सावधानी', 'warning');
       return;
     }
 
@@ -695,672 +714,612 @@ export default function BillingManagement({ setActiveTab, t }) {
             {/* LEFT SIDE: PRODUCT CATALOG SEARCH & EDITABLE CATALOG CARDS GRID */}
             <div className={`pos-catalog-column ${mobilePosTab === 'cart' ? 'hide-mobile' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-            {/* Search Bar & Category Filters Toolbar */}
-            <div className="card-surface" style={{ padding: '1rem 1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* Search Bar & Category Filters Toolbar */}
+              <div className="card-surface" style={{ padding: '1rem 1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
 
-                {/* Product Search Input */}
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <div style={{ position: 'absolute', left: '0.85rem', pointerEvents: 'none' }}>
-                    <SearchIcon size={20} color="var(--primary)" />
-                  </div>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder={t.searchProduct || 'मालाचे नाव शोधा (उदा. साखर, तेल, तांदूळ)...'}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ paddingLeft: '2.6rem', height: '44px', fontSize: '0.95rem' }}
-                  />
-                </div>
-
-                {/* Category Pills */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflowX: 'auto', paddingBottom: '4px' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <FilterIcon size={14} color="var(--primary)" /> प्रकार:
-                  </span>
-
-                  {[
-                    { id: '', label: t.catAll || 'सर्व प्रकार' },
-                    { id: 'Grains & Pulses', label: t.catGrains || 'धान्य व डाळी' },
-                    { id: 'Oils & Ghee', label: t.catOils || 'तेल आणि तूप' },
-                    { id: 'Spices & Dryfruits', label: t.catSpices || 'मसाले व ड्रायफ्रूट्स' },
-                    { id: 'Beverages & Snacks', label: t.catSnacks || 'चहा, पेये व बिस्किटे' },
-                    { id: 'Soaps & Cleaning', label: t.catCleaning || 'साबण व स्वच्छता' },
-                    { id: 'General Kirana', label: t.catGeneral || 'जनरल किराणा' }
-                  ].map((cat) => {
-                    const isActive = selectedCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat.id)}
-                        style={{
-                          padding: '0.35rem 0.85rem',
-                          borderRadius: '20px',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          border: '1px solid',
-                          borderColor: isActive ? 'var(--primary)' : 'var(--border-color)',
-                          background: isActive ? 'var(--primary)' : '#f8fafc',
-                          color: isActive ? '#ffffff' : 'var(--text-body)',
-                          whiteSpace: 'nowrap',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {cat.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
-              </div>
-            </div>
-
-            {/* Product Cards Grid */}
-            {loadingStock ? (
-              <LoadingSpinner text="मालाचे कॅटलॉग लोड होत आहे..." />
-            ) : filteredProducts.length === 0 ? (
-              <div className="card-surface" style={{ textAlign: 'center', padding: '3rem 1.5rem', background: '#ffffff' }}>
-                <PackageIcon size={40} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
-                <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.noStockFound || 'कोणताही माल सापडला नाही.'}</p>
-              </div>
-            ) : (
-              <div
-                className="pos-products-grid"
-                style={{
-                  maxHeight: 'calc(100vh - 240px)',
-                  overflowY: 'auto',
-                  paddingRight: '4px'
-                }}
-              >
-                {filteredProducts.map((product) => {
-                  const cartItem = getCartItem(product._id);
-                  const isLowStock = product.quantity <= (product.minStockAlert || 5);
-                  const isOutOfStock = product.quantity <= 0;
-                  const displayName = cleanDisplayName(product.name);
-
-                  const curQty = cartItem ? cartItem.quantity : 0;
-                  const curSellingPrice = cartItem ? cartItem.sellingPrice : product.sellingPrice;
-                  const curUnit = cartItem ? cartItem.unit : product.unit;
-                  const curSubtotal = cartItem ? cartItem.subtotal : 0;
-
-                  return (
-                    <div
-                      key={product._id}
-                      className="card-surface"
-                      style={{
-                        padding: '1rem 0.85rem',
-                        background: '#ffffff',
-                        borderRadius: 'var(--radius-md)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        gap: '0.65rem',
-                        position: 'relative',
-                        border: curQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                        boxShadow: curQty > 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-card)',
-                        transition: 'all 0.15s ease',
-                        minWidth: 0
-                      }}
-                    >
-                      {/* Top Category Tag & Stock Status */}
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.25rem', marginBottom: '0.45rem', flexWrap: 'wrap' }}>
-                          <span style={{
-                            fontSize: '0.68rem',
-                            background: 'var(--bg-surface-raised)',
-                            color: 'var(--text-muted)',
-                            padding: '0.15rem 0.45rem',
-                            borderRadius: '12px',
-                            fontWeight: 700
-                          }}>
-                            {product.category || 'Kirana'}
-                          </span>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-                            <span style={{
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              color: isOutOfStock ? 'var(--danger)' : (isLowStock ? '#d97706' : 'var(--success)')
-                            }}>
-                              {isOutOfStock ? 'साठा ०' : `साठा: ${formatQuantity(product.quantity, product.unit)} ${normalizeUnit(product.unit)}`}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenQuickStockEdit(product);
-                              }}
-                              style={{
-                                border: 'none',
-                                background: '#e0e7ff',
-                                color: '#4338ca',
-                                padding: '0.12rem 0.35rem',
-                                borderRadius: '6px',
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.15rem'
-                              }}
-                              title="दुकानातील साठा बदला"
-                            >
-                              <PencilIcon size={10} /> साठा
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Product Name */}
-                        <h4 style={{
-                          fontSize: '0.95rem',
-                          fontWeight: 800,
-                          color: 'var(--text-heading)',
-                          marginBottom: '0.5rem',
-                          lineHeight: 1.25,
-                          wordBreak: 'break-word'
-                        }}>
-                          {displayName}
-                        </h4>
-                      </div>
-
-                      {/* CONTROLS ON THE CATALOG CARD (Read-only Price Tag, Quantity & Unit Dropdown) */}
-                      <div style={{ background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                        
-                        {/* Read-only Selling Rate Tag (Not editable in stock list) */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem', background: '#eef2ff', borderRadius: '4px', border: '1px solid #c7d2fe' }}>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#3730a3' }}>विक्री दर:</span>
-                          <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary)' }}>
-                            ₹{formatAmount(product.sellingPrice)} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>/ {normalizeUnit(product.unit)}</span>
-                          </span>
-                        </div>
-
-                        {/* Quantity & Unit Controls */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '0.4rem', alignItems: 'center' }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>प्रमाण (Qty):</label>
-                            <input
-                              type="number"
-                              step={isIntegerUnit(curUnit) ? "1" : "0.01"}
-                              min="0"
-                              placeholder="0"
-                              value={curQty > 0 ? curQty : ''}
-                              onChange={(e) => handleCatalogCardFieldChange(product, 'quantity', e.target.value)}
-                              style={{ width: '100%', padding: '0.25rem 0.35rem', fontSize: '0.88rem', fontWeight: 800, border: '1px solid var(--border-color)', borderRadius: '4px', textAlign: 'center', background: '#ffffff' }}
-                            />
-                          </div>
-
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>युनिट (Unit):</label>
-                            <select
-                              value={normalizeUnit(curUnit)}
-                              onChange={(e) => handleCatalogCardFieldChange(product, 'unit', e.target.value)}
-                              style={{ width: '100%', padding: '0.25rem 0.2rem', fontSize: '0.78rem', fontWeight: 700, border: '1px solid var(--border-color)', borderRadius: '4px', background: '#ffffff' }}
-                            >
-                              {getConvertibleUnits(product.unit).map((u) => (
-                                <option key={u.id} value={u.id}>{u.label}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Weight Preset Pills */}
-                        {(normalizeUnit(product.unit) === 'kg' || normalizeUnit(product.unit) === 'g' || normalizeUnit(product.unit) === 'liter') && (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.2rem', marginTop: '0.15rem' }}>
-                            {[0.25, 0.5, 1, 2].map((preset) => (
-                              <button
-                                key={preset}
-                                type="button"
-                                onClick={() => handleCatalogCardFieldChange(product, 'quantity', preset)}
-                                style={{
-                                  padding: '0.2rem 0',
-                                  fontSize: '0.66rem',
-                                  fontWeight: 700,
-                                  borderRadius: '4px',
-                                  border: '1px solid var(--border-color)',
-                                  background: curQty === preset ? 'var(--primary-light)' : '#ffffff',
-                                  color: curQty === preset ? 'var(--primary)' : 'var(--text-body)',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                {preset}{product.unit === 'g' ? 'g' : product.unit === 'liter' ? 'L' : 'kg'}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                      </div>
-
-                      {/* Card Footer: Live Subtotal & Add/Remove Action */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem' }}>
-                        <div>
-                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण रक्कम:</span>
-                          <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary)' }}>
-                            ₹{formatAmount(curSubtotal)}
-                          </span>
-                        </div>
-
-                        {curQty === 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => handleIncrement(product)}
-                            className="btn-primary"
-                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-                          >
-                            <PlusIcon size={14} /> जोडा
-                          </button>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleDecrement(product)}
-                              className="btn-secondary"
-                              style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}
-                              title="कम करा"
-                            >
-                              <MinusIcon size={12} />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(product._id)}
-                              style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)', padding: '0.3rem 0.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.72rem', fontWeight: 700 }}
-                              title="काढून टाका"
-                            >
-                              <TrashIcon size={12} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
+                  {/* Product Search Input */}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ position: 'absolute', left: '0.85rem', pointerEvents: 'none' }}>
+                      <SearchIcon size={20} color="var(--primary)" />
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-          </div>
-
-          {/* RIGHT SIDE: CLEAN, SPACIOUS LIVE CART LIST SUMMARY & CHECKOUT PANEL */}
-          <div className={`pos-cart-column ${mobilePosTab === 'catalog' ? 'hide-mobile' : ''}`} style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
-            <div className="card-surface" style={{ padding: '1.35rem', background: '#ffffff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)' }}>
-
-              {/* Cart Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-color)' }}>
-                <h3 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--text-heading)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <ShoppingCartIcon size={22} color="var(--primary)" />
-                  बिलातील वस्तूंची यादी (Selected List)
-                </h3>
-                <span style={{ fontSize: '0.8rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontWeight: 800 }}>
-                  {cartItems.length} वस्तू
-                </span>
-              </div>
-
-              {/* Selected Items List Container - Spacious & Uncluttered */}
-              <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '1.25rem', paddingRight: '4px' }}>
-                {cartItems.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-                    <ShoppingCartIcon size={36} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
-                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{t.cartEmpty || 'बिलामध्ये कोणताही माल जोडलेला नाही.'}</p>
-                    <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>डाव्या बाजूच्या कॅटलॉगवरून वस्तू निवडा</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {cartItems.map((item) => (
-                      <div
-                        key={item.productId}
-                        style={{
-                          background: '#f8fafc',
-                          border: '1px solid var(--border-color)',
-                          borderRadius: 'var(--radius-sm)',
-                          padding: '0.75rem 0.85rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.45rem'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                          <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>
-                            {item.name}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(item.productId)}
-                            style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.2rem' }}
-                            title="काढून टाका"
-                          >
-                            <TrashIcon size={16} />
-                          </button>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          {/* Quantity & Unit info */}
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                            प्रमाण: <strong style={{ color: 'var(--primary)' }}>{formatQuantity(item.quantity, item.unit)} {normalizeUnit(item.unit)}</strong>
-                          </div>
-
-                          {/* Editable Selling Price Field ONLY in Selected List */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>दर (₹):</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={item.sellingPrice}
-                              onChange={(e) => handleCartItemSellingPriceChange(item.productId, e.target.value)}
-                              style={{
-                                width: '75px',
-                                padding: '0.2rem 0.35rem',
-                                fontSize: '0.84rem',
-                                fontWeight: 800,
-                                color: 'var(--primary)',
-                                border: '1.5px solid var(--primary)',
-                                borderRadius: '4px',
-                                textAlign: 'right',
-                                background: '#ffffff'
-                              }}
-                              title="बिलातील विक्री दर बदला"
-                            />
-                          </div>
-
-                          {/* Line Item Subtotal */}
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण:</span>
-                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
-                              ₹{formatAmount(item.subtotal)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Total Grand Summary Banner */}
-              <div style={{
-                background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                color: '#ffffff',
-                padding: '1rem 1.25rem',
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '1.25rem',
-                boxShadow: '0 4px 14px var(--primary-glow)'
-              }}>
-                <div>
-                  <span style={{ fontSize: '0.82rem', color: '#ffffff', opacity: 1, fontWeight: 700 }}>
-                    एकूण बिल रक्कम (Total Amount)
-                  </span>
-                  <h3 style={{ fontSize: '1.75rem', margin: 0, fontWeight: 800, color: '#ffffff' }}>
-                    ₹{formatAmount(grandTotal)}
-                  </h3>
-                </div>
-                <SparklesIcon size={28} color="#ffffff" />
-              </div>
-
-              {/* Payment Mode Selection (Paid vs Katha) */}
-              <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '0.45rem', color: 'var(--text-heading)', fontWeight: 800 }}>
-                {t.selectPaymentOption || 'पेमेंट प्रकार निवडा (Payment Mode)'}
-              </label>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div
-                  onClick={() => setPaymentStatus('PAID')}
-                  style={{
-                    border: paymentStatus === 'PAID' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: paymentStatus === 'PAID' ? '#f4f5ff' : '#ffffff',
-                    padding: '0.75rem',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <BanknoteIcon size={20} color="var(--primary)" style={{ marginBottom: '0.2rem' }} />
-                  <strong style={{ fontSize: '0.85rem', color: 'var(--text-heading)', display: 'block' }}>
-                    {t.paid || 'रोख / ऑनलाईन'}
-                  </strong>
-                </div>
-
-                <div
-                  onClick={() => setPaymentStatus('UNPAID')}
-                  style={{
-                    border: paymentStatus === 'UNPAID' ? '2px solid var(--danger)' : '1px solid var(--border-color)',
-                    background: paymentStatus === 'UNPAID' ? '#fff5f5' : '#ffffff',
-                    padding: '0.75rem',
-                    borderRadius: 'var(--radius-sm)',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <BookOpenIcon size={20} color="var(--danger)" style={{ marginBottom: '0.2rem' }} />
-                  <strong style={{ fontSize: '0.85rem', color: 'var(--danger)', display: 'block' }}>
-                    {t.unpaid || 'उधारी खाता (Katha)'}
-                  </strong>
-                </div>
-              </div>
-
-              {/* PAYMENT DETAILS / KATHA CUSTOMER SELECTOR */}
-              {paymentStatus === 'PAID' ? (
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                    पेमेंट पद्धत (Payment Method)
-                  </label>
-                  <select
-                    className="input-field"
-                    value={paymentType}
-                    onChange={(e) => setPaymentType(e.target.value)}
-                    style={{ fontSize: '0.85rem', height: '38px', marginBottom: '0.65rem' }}
-                  >
-                    <option value="CASH">{t.payCash || 'रोख (Cash)'}</option>
-                    <option value="UPI">{t.payUpi || 'GPay / PhonePe (UPI)'}</option>
-                    <option value="CARD">{t.payCard || 'कार्ड (Card)'}</option>
-                    <option value="OTHER">{t.payOther || 'इतर (Other)'}</option>
-                  </select>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                        ग्राहकाचे नाव (Name) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        className="input-field"
-                        placeholder="उदा. राहुल पाटील *"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        style={{ fontSize: '0.82rem', height: '38px' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                        मोबाईल नंबर (Phone) *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={10}
-                        className="input-field"
-                        placeholder="१० अंकांचा मोबाईल नंबर *"
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(sanitizePhoneInput(e.target.value))}
-                        style={{ fontSize: '0.82rem', height: '38px' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                    उधारीसाठी ग्राहक निवडा (Select Customer) *
-                  </label>
-
-                  <div style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.55rem' }}>
                     <input
                       type="text"
                       className="input-field"
-                      placeholder="नाव / नंबर शोधा..."
-                      value={customerSearchQuery}
-                      onChange={(e) => {
-                        setCustomerSearchQuery(e.target.value);
-                        fetchLedgerCustomers(e.target.value);
-                      }}
-                      style={{ fontSize: '0.82rem', height: '36px', flex: 1 }}
+                      placeholder={t.searchProduct || 'मालाचे नाव शोधा (उदा. साखर, तेल, तांदूळ)...'}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ paddingLeft: '2.6rem', height: '44px', fontSize: '0.95rem' }}
                     />
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      onClick={() => setShowAddCustomerForm(!showAddCustomerForm)}
-                      style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
-                    >
-                      <PlusIcon size={14} /> नवीन
-                    </button>
                   </div>
 
-                  {showAddCustomerForm && (
-                    <form onSubmit={handleAddNewCustomerInline} style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: 'var(--radius-sm)', marginBottom: '0.65rem', border: '1px dashed var(--primary)' }}>
-                      <input
-                        type="text"
-                        required
-                        className="input-field"
-                        placeholder="ग्राहकाचे नाव *"
-                        value={newCustName}
-                        onChange={(e) => setNewCustName(e.target.value)}
-                        style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.4rem' }}
-                      />
-                      <input
-                        type="text"
-                        required
-                        maxLength={10}
-                        className="input-field"
-                        placeholder="१० अंकांचा फोन नंबर *"
-                        value={newCustPhone}
-                        onChange={(e) => setNewCustPhone(sanitizePhoneInput(e.target.value))}
-                        style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.5rem' }}
-                      />
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
-                        <button type="button" className="btn-secondary" onClick={() => setShowAddCustomerForm(false)} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}>रद्द</button>
-                        <button type="submit" className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>सेव्ह करा</button>
+                  {/* Category Pills */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflowX: 'auto', paddingBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <FilterIcon size={14} color="var(--primary)" /> प्रकार:
+                    </span>
+
+                    {[
+                      { id: '', label: t.catAll || 'सर्व प्रकार' },
+                      { id: 'Grains & Pulses', label: t.catGrains || 'धान्य व डाळी' },
+                      { id: 'Oils & Ghee', label: t.catOils || 'तेल आणि तूप' },
+                      { id: 'Spices & Dryfruits', label: t.catSpices || 'मसाले व ड्रायफ्रूट्स' },
+                      { id: 'Beverages & Snacks', label: t.catSnacks || 'चहा, पेये व बिस्किटे' },
+                      { id: 'Soaps & Cleaning', label: t.catCleaning || 'साबण व स्वच्छता' },
+                      { id: 'General Kirana', label: t.catGeneral || 'जनरल किराणा' }
+                    ].map((cat) => {
+                      const isActive = selectedCategory === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setSelectedCategory(cat.id)}
+                          style={{
+                            padding: '0.35rem 0.85rem',
+                            borderRadius: '20px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            border: '1px solid',
+                            borderColor: isActive ? 'var(--primary)' : 'var(--border-color)',
+                            background: isActive ? 'var(--primary)' : '#f8fafc',
+                            color: isActive ? '#ffffff' : 'var(--text-body)',
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {cat.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Product Cards Grid */}
+              {loadingStock ? (
+                <LoadingSpinner text="मालाचे कॅटलॉग लोड होत आहे..." />
+              ) : filteredProducts.length === 0 ? (
+                <div className="card-surface" style={{ textAlign: 'center', padding: '3rem 1.5rem', background: '#ffffff' }}>
+                  <PackageIcon size={40} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
+                  <p style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{t.noStockFound || 'कोणताही माल सापडला नाही.'}</p>
+                </div>
+              ) : (
+                <div
+                  className="pos-products-grid"
+                  style={{
+                    maxHeight: 'calc(100vh - 240px)',
+                    overflowY: 'auto',
+                    paddingRight: '4px'
+                  }}
+                >
+                  {filteredProducts.map((product) => {
+                    const cartItem = getCartItem(product._id);
+                    const isLowStock = product.quantity <= (product.minStockAlert || 5);
+                    const isOutOfStock = product.quantity <= 0;
+                    const displayName = cleanDisplayName(product.name);
+
+                    const curQty = cartItem ? cartItem.quantity : 0;
+                    const curSellingPrice = cartItem ? cartItem.sellingPrice : product.sellingPrice;
+                    const curUnit = cartItem ? cartItem.unit : product.unit;
+                    const curSubtotal = cartItem ? cartItem.subtotal : 0;
+
+                    return (
+                      <div
+                        key={product._id}
+                        className="card-surface"
+                        style={{
+                          padding: '1rem 0.85rem',
+                          background: '#ffffff',
+                          borderRadius: 'var(--radius-md)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '0.65rem',
+                          position: 'relative',
+                          border: curQty > 0 ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                          boxShadow: curQty > 0 ? '0 4px 16px var(--primary-glow)' : 'var(--shadow-card)',
+                          transition: 'all 0.15s ease',
+                          minWidth: 0
+                        }}
+                      >
+                        {/* Top Stock Status (Category box removed completely as requested) */}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', marginBottom: '0.45rem' }}>
+                            <span style={{
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              color: isOutOfStock ? 'var(--danger)' : (isLowStock ? '#d97706' : 'var(--success)')
+                            }}>
+                              {isOutOfStock ? 'साठा ०' : `साठा: ${formatQuantity(product.quantity, product.unit)} ${getMarathiUnitLabel(product.unit)}`}
+                            </span>
+                          </div>
+
+                          {/* Product Name */}
+                          <h4 style={{
+                            fontSize: '0.95rem',
+                            fontWeight: 800,
+                            color: 'var(--text-heading)',
+                            marginBottom: '0.5rem',
+                            lineHeight: 1.25,
+                            wordBreak: 'break-word'
+                          }}>
+                            {displayName}
+                          </h4>
+                        </div>
+
+                        {/* CONTROLS ON THE CATALOG CARD (Read-only Price Tag, Quantity & Unit Dropdown) */}
+                        <div style={{ background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+
+                          {/* Read-only Selling Rate Tag (Not editable in stock list) */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem', background: '#eef2ff', borderRadius: '4px', border: '1px solid #c7d2fe' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#3730a3' }}>विक्री दर:</span>
+                            <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--primary)' }}>
+                              ₹{formatAmount(product.sellingPrice)} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>/ {getMarathiUnitLabel(product.unit)}</span>
+                            </span>
+                          </div>
+
+                          {/* Quantity & Unit Controls */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: '0.4rem', alignItems: 'center' }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>प्रमाण:</label>
+                              <input
+                                type="number"
+                                step={isIntegerUnit(curUnit) ? "1" : "0.01"}
+                                min="0"
+                                placeholder="0"
+                                value={curQty > 0 ? curQty : ''}
+                                onChange={(e) => handleCatalogCardFieldChange(product, 'quantity', e.target.value)}
+                                style={{ width: '100%', padding: '0.25rem 0.35rem', fontSize: '0.88rem', fontWeight: 800, border: '1px solid var(--border-color)', borderRadius: '4px', textAlign: 'center', background: '#ffffff' }}
+                              />
+                            </div>
+
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>युनिट:</label>
+                              <select
+                                value={normalizeUnit(curUnit)}
+                                onChange={(e) => handleCatalogCardFieldChange(product, 'unit', e.target.value)}
+                                style={{ width: '100%', padding: '0.25rem 0.2rem', fontSize: '0.78rem', fontWeight: 700, border: '1px solid var(--border-color)', borderRadius: '4px', background: '#ffffff' }}
+                              >
+                                {getConvertibleUnits(product.unit).map((u) => (
+                                  <option key={u.id} value={u.id}>{u.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                        </div>
+
+                        {/* Card Footer: Live Subtotal & Add/Remove Action */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.2rem' }}>
+                          <div>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण रक्कम:</span>
+                            <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary)' }}>
+                              ₹{formatAmount(curSubtotal)}
+                            </span>
+                          </div>
+
+                          {curQty === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleIncrement(product)}
+                              className="btn-primary"
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
+                            >
+                              <PlusIcon size={14} /> जोडा
+                            </button>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleDecrement(product)}
+                                className="btn-secondary"
+                                style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}
+                                title="कम करा"
+                              >
+                                <MinusIcon size={12} />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(product._id)}
+                                style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)', padding: '0.3rem 0.5rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.72rem', fontWeight: 700 }}
+                                title="काढून टाका"
+                              >
+                                <TrashIcon size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                       </div>
-                    </form>
-                  )}
-
-                  <select
-                    className="input-field"
-                    value={selectedCustomerId || ''}
-                    onChange={(e) => {
-                      const cust = ledgerCustomers.find((c) => c._id === e.target.value);
-                      if (cust) handleSelectCustomer(cust);
-                    }}
-                    style={{ fontSize: '0.85rem', height: '38px', fontWeight: 700, marginBottom: '0.55rem' }}
-                  >
-                    <option value="">-- उधारी ग्राहक निवडा --</option>
-                    {ledgerCustomers.map((cust) => (
-                      <option key={cust._id} value={cust._id}>
-                        {cust.name} ({cust.phone}) - उधारी: ₹{cust.totalDue}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                        ग्राहकाचे नाव *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        className="input-field"
-                        placeholder="ग्राहकाचे नाव *"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        style={{ fontSize: '0.82rem', height: '36px' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                        मोबाईल नंबर *
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        className="input-field"
-                        placeholder="१० अंकांचा मोबाईल नंबर *"
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(sanitizePhoneInput(e.target.value))}
-                        style={{ fontSize: '0.82rem', height: '36px' }}
-                      />
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* GENERATE BILL BUTTON */}
-              <button
-                type="button"
-                disabled={isSubmitting || cartItems.length === 0}
-                onClick={handleFinalSubmitBill}
-                className="btn-primary"
-                style={{
-                  width: '100%',
-                  height: '48px',
-                  fontSize: '1rem',
-                  fontWeight: 800,
-                  justifyContent: 'center',
+            </div>
+
+            {/* RIGHT SIDE: CLEAN, SPACIOUS LIVE CART LIST SUMMARY & CHECKOUT PANEL */}
+            <div className={`pos-cart-column ${mobilePosTab === 'catalog' ? 'hide-mobile' : ''}`} style={{ position: 'sticky', top: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+              <div className="card-surface" style={{ padding: '1.35rem', background: '#ffffff', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)' }}>
+
+                {/* Cart Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-color)' }}>
+                  <h3 style={{ fontSize: '1.15rem', margin: 0, color: 'var(--text-heading)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ShoppingCartIcon size={22} color="var(--primary)" />
+                    बिलातील वस्तूंची यादी
+                  </h3>
+                  <span style={{ fontSize: '0.8rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontWeight: 800 }}>
+                    {cartItems.length} वस्तू
+                  </span>
+                </div>
+
+                {/* Selected Items List Container - Spacious & Uncluttered */}
+                <div style={{ maxHeight: '380px', overflowY: 'auto', marginBottom: '1.25rem', paddingRight: '4px' }}>
+                  {cartItems.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+                      <ShoppingCartIcon size={36} color="var(--text-muted)" style={{ marginBottom: '0.5rem' }} />
+                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{t.cartEmpty || 'बिलामध्ये कोणताही माल जोडलेला नाही.'}</p>
+                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>डाव्या बाजूच्या कॅटलॉगवरून वस्तू निवडा</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {cartItems.map((item) => (
+                        <div
+                          key={item.productId}
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '0.75rem 0.85rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.45rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-heading)' }}>
+                              {item.name}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.productId)}
+                              style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.2rem' }}
+                              title="काढून टाका"
+                            >
+                              <TrashIcon size={16} />
+                            </button>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {/* Quantity & Unit info */}
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                              प्रमाण: <strong style={{ color: 'var(--primary)' }}>{formatQuantity(item.quantity, item.unit)} {normalizeUnit(item.unit)}</strong>
+                            </div>
+
+                            {/* Editable Selling Price Field ONLY in Selected List */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>दर (₹):</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={item.sellingPrice}
+                                onChange={(e) => handleCartItemSellingPriceChange(item.productId, e.target.value)}
+                                style={{
+                                  width: '75px',
+                                  padding: '0.2rem 0.35rem',
+                                  fontSize: '0.84rem',
+                                  fontWeight: 800,
+                                  color: 'var(--primary)',
+                                  border: '1.5px solid var(--primary)',
+                                  borderRadius: '4px',
+                                  textAlign: 'right',
+                                  background: '#ffffff'
+                                }}
+                                title="बिलातील विक्री दर बदला"
+                              />
+                            </div>
+
+                            {/* Line Item Subtotal */}
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block' }}>एकूण:</span>
+                              <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
+                                ₹{formatAmount(item.subtotal)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Total Grand Summary Banner */}
+
+
+                {/* Payment Mode Selection (Paid vs Katha) */}
+                <label style={{ display: 'block', fontSize: '0.84rem', marginBottom: '0.45rem', color: 'var(--text-heading)', fontWeight: 800 }}>
+                  {t.selectPaymentOption || 'पेमेंट प्रकार निवडा (Payment Mode)'}
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                  <div
+                    onClick={() => setPaymentStatus('PAID')}
+                    style={{
+                      border: paymentStatus === 'PAID' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                      background: paymentStatus === 'PAID' ? '#f4f5ff' : '#ffffff',
+                      padding: '0.75rem',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <BanknoteIcon size={20} color="var(--primary)" style={{ marginBottom: '0.2rem' }} />
+                    <strong style={{ fontSize: '0.85rem', color: 'var(--text-heading)', display: 'block' }}>
+                      {t.paid || 'रोख / ऑनलाईन'}
+                    </strong>
+                  </div>
+
+                  <div
+                    onClick={() => setPaymentStatus('UNPAID')}
+                    style={{
+                      border: paymentStatus === 'UNPAID' ? '2px solid var(--danger)' : '1px solid var(--border-color)',
+                      background: paymentStatus === 'UNPAID' ? '#fff5f5' : '#ffffff',
+                      padding: '0.75rem',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <BookOpenIcon size={20} color="var(--danger)" style={{ marginBottom: '0.2rem' }} />
+                    <strong style={{ fontSize: '0.85rem', color: 'var(--danger)', display: 'block' }}>
+                      {t.unpaid || 'उधारी खाता (Katha)'}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* PAYMENT DETAILS / KATHA CUSTOMER SELECTOR */}
+                {paymentStatus === 'PAID' ? (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                      पेमेंट पद्धत
+                    </label>
+                    <select
+                      className="input-field"
+                      value={paymentType}
+                      onChange={(e) => setPaymentType(e.target.value)}
+                      style={{ fontSize: '0.85rem', height: '38px', marginBottom: '0.65rem' }}
+                    >
+                      <option value="CASH">{t.payCash || 'रोख '}</option>
+                      <option value="UPI">{t.payUpi || 'GPay / PhonePe (UPI)'}</option>
+                      <option value="CARD">{t.payCard || 'कार्ड (Card)'}</option>
+                      <option value="OTHER">{t.payOther || 'इतर (Other)'}</option>
+                    </select>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          ग्राहकाचे नाव *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          className="input-field"
+                          placeholder="उदा. राहुल पाटील *"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          style={{ fontSize: '0.82rem', height: '38px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          मोबाईल नंबर*
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={10}
+                          className="input-field"
+                          placeholder="१० अंकांचा मोबाईल नंबर *"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(sanitizePhoneInput(e.target.value))}
+                          style={{ fontSize: '0.82rem', height: '38px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.35rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                      उधारीसाठी ग्राहक निवडा (Select Customer) *
+                    </label>
+
+                    <div style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.55rem' }}>
+                      <input
+                        type="text"
+                        className="input-field"
+                        placeholder="नाव / नंबर शोधा..."
+                        value={customerSearchQuery}
+                        onChange={(e) => {
+                          setCustomerSearchQuery(e.target.value);
+                          fetchLedgerCustomers(e.target.value);
+                        }}
+                        style={{ fontSize: '0.82rem', height: '36px', flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => setShowAddCustomerForm(!showAddCustomerForm)}
+                        style={{ fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
+                      >
+                        <PlusIcon size={14} /> नवीन
+                      </button>
+                    </div>
+
+                    {showAddCustomerForm && (
+                      <form onSubmit={handleAddNewCustomerInline} style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: 'var(--radius-sm)', marginBottom: '0.65rem', border: '1px dashed var(--primary)' }}>
+                        <input
+                          type="text"
+                          required
+                          className="input-field"
+                          placeholder="ग्राहकाचे नाव *"
+                          value={newCustName}
+                          onChange={(e) => setNewCustName(e.target.value)}
+                          style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.4rem' }}
+                        />
+                        <input
+                          type="text"
+                          required
+                          maxLength={10}
+                          className="input-field"
+                          placeholder="१० अंकांचा फोन नंबर *"
+                          value={newCustPhone}
+                          onChange={(e) => setNewCustPhone(sanitizePhoneInput(e.target.value))}
+                          style={{ fontSize: '0.8rem', height: '34px', marginBottom: '0.5rem' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                          <button type="button" className="btn-secondary" onClick={() => setShowAddCustomerForm(false)} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}>रद्द</button>
+                          <button type="submit" className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>सेव्ह करा</button>
+                        </div>
+                      </form>
+                    )}
+
+                    <select
+                      className="input-field"
+                      value={selectedCustomerId || ''}
+                      onChange={(e) => {
+                        const cust = ledgerCustomers.find((c) => c._id === e.target.value);
+                        if (cust) handleSelectCustomer(cust);
+                      }}
+                      style={{ fontSize: '0.85rem', height: '38px', fontWeight: 700, marginBottom: '0.55rem' }}
+                    >
+                      <option value="">-- उधारी ग्राहक निवडा --</option>
+                      {ledgerCustomers.map((cust) => (
+                        <option key={cust._id} value={cust._id}>
+                          {cust.name} ({cust.phone}) - उधारी: ₹{cust.totalDue}
+                        </option>
+                      ))}
+                    </select>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          ग्राहकाचे नाव *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          className="input-field"
+                          placeholder="ग्राहकाचे नाव *"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          style={{ fontSize: '0.82rem', height: '36px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.2rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          मोबाईल नंबर *
+                        </label>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          className="input-field"
+                          placeholder="१० अंकांचा मोबाईल नंबर *"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(sanitizePhoneInput(e.target.value))}
+                          style={{ fontSize: '0.82rem', height: '36px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: '#ffffff',
+                  padding: '1rem 1.25rem',
                   borderRadius: 'var(--radius-sm)',
-                  opacity: (isSubmitting || cartItems.length === 0) ? 0.6 : 1,
-                  cursor: (isSubmitting || cartItems.length === 0) ? 'not-allowed' : 'pointer'
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '1.25rem',
+                  boxShadow: '0 4px 14px var(--primary-glow)'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.82rem', color: '#ffffff', opacity: 1, fontWeight: 700 }}>
+                      एकूण बिल रक्कम
+                    </span>
+                    <h3 style={{ fontSize: '1.75rem', margin: 0, fontWeight: 800, color: '#ffffff' }}>
+                      ₹{formatAmount(grandTotal)}
+                    </h3>
+                  </div>
+                  <SparklesIcon size={28} color="#ffffff" />
+                </div>
+                {/* GENERATE BILL BUTTON */}
+                <button
+                  type="button"
+                  disabled={isSubmitting || cartItems.length === 0}
+                  onClick={handleFinalSubmitBill}
+                  className="btn-primary"
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    fontSize: '1rem',
+                    fontWeight: 800,
+                    justifyContent: 'center',
+                    borderRadius: 'var(--radius-sm)',
+                    opacity: (isSubmitting || cartItems.length === 0) ? 0.6 : 1,
+                    cursor: (isSubmitting || cartItems.length === 0) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <PrinterIcon size={20} color="#ffffff" />
+                  <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
+                </button>
+
+              </div>
+
+            </div>
+
+            {/* Sticky Mobile Floating Cart Bar */}
+            {mobilePosTab === 'catalog' && cartItems.length > 0 && (
+              <div
+                className="mobile-pos-tabs no-print"
+                onClick={() => setMobilePosTab('cart')}
+                style={{
+                  display: 'none',
+                  position: 'fixed',
+                  bottom: '1rem',
+                  left: '1rem',
+                  right: '1rem',
+                  zIndex: 9999,
+                  background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
+                  color: '#ffffff',
+                  padding: '0.85rem 1.2rem',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: '0 8px 24px rgba(67, 56, 202, 0.4)',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer'
                 }}
               >
-                <PrinterIcon size={20} color="#ffffff" />
-                <span>{isSubmitting ? 'बिल सेव्ह होत आहे...' : (t.printBill || 'बिल बनवा आणि प्रिंट करा')}</span>
-              </button>
-
-            </div>
-
-          </div>
-
-          {/* Sticky Mobile Floating Cart Bar */}
-          {mobilePosTab === 'catalog' && cartItems.length > 0 && (
-            <div
-              className="mobile-pos-tabs no-print"
-              onClick={() => setMobilePosTab('cart')}
-              style={{
-                display: 'none',
-                position: 'fixed',
-                bottom: '1rem',
-                left: '1rem',
-                right: '1rem',
-                zIndex: 9999,
-                background: 'linear-gradient(135deg, var(--primary), var(--primary-hover))',
-                color: '#ffffff',
-                padding: '0.85rem 1.2rem',
-                borderRadius: 'var(--radius-md)',
-                boxShadow: '0 8px 24px rgba(67, 56, 202, 0.4)',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                <ShoppingCartIcon size={20} color="#ffffff" />
-                <span style={{ fontWeight: 800, fontSize: '0.92rem' }}>
-                  {cartItems.length} वस्तू जोडल्या • ₹{formatAmount(grandTotal)}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                  <ShoppingCartIcon size={20} color="#ffffff" />
+                  <span style={{ fontWeight: 800, fontSize: '0.92rem' }}>
+                    {cartItems.length} वस्तू जोडल्या • ₹{formatAmount(grandTotal)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem' }}>
+                  <span>बिल पहा</span>
+                  <ArrowRightIcon size={16} color="#ffffff" />
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, fontSize: '0.85rem' }}>
-                <span>बिल पहा</span>
-                <ArrowRightIcon size={16} color="#ffffff" />
-              </div>
-            </div>
-          )}
+            )}
 
           </div>
         </div>

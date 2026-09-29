@@ -61,7 +61,7 @@ export default function LanguageToggle({ lang, setLang, bg = '#f1f5f9' }) {
         }}
         aria-pressed={lang === 'en'}
       >
-        English
+        मराठी
       </button>
 
       <button

@@ -76,7 +76,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
       message: message,
       onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
       onCancel: null,
-      confirmText: 'ठीक आहे (OK)',
+      confirmText: 'ठीक आहे',
       cancelText: ''
     });
   };
@@ -192,11 +192,16 @@ export default function LedgerManagement({ setActiveTab, t }) {
       return;
     }
 
+    if (!dueNote.trim()) {
+      showAlert('उधारी जोडण्यासाठी कारणाचे नाव / टीप अनिवार्य आहे!', 'सावधानी', 'warning');
+      return;
+    }
+
     try {
       await ledgerAPI.addDue({
         customerId: selectedCustomerId,
         amount: enteredAmt,
-        note: dueNote || 'उधारी जोडली',
+        note: dueNote.trim(),
       });
 
       setShowAddDueModal(false);
@@ -518,7 +523,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   }}
                 >
                   <PhoneIcon size={16} color="#ffffff" />
-                  <span>कॉल करा (Call)</span>
+                  <span>कॉल करा</span>
                 </a>
 
                 <button
@@ -589,7 +594,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                           cursor: isDue && hasBill ? 'pointer' : 'default',
                           transition: 'all 0.15s ease'
                         }}
-                        title={isDue && hasBill ? 'ह्या व्यवहाराचे बील पहा (Click to view bill)' : ''}
+                        title={isDue && hasBill ? 'ह्या व्यवहाराचे बील पहा' : ''}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-heading)' }}>
@@ -646,7 +651,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   type="text"
                   className="input-field"
                   required
-                  placeholder="e.g. Ramesh Patil / रमेश पाटील"
+                  placeholder="उदा. रमेश पाटील"
                   value={newCustName}
                   onChange={(e) => setNewCustName(e.target.value)}
                 />
@@ -661,7 +666,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   className="input-field"
                   required
                   maxLength={10}
-                  placeholder="उदा. 9876543210 (10 Digits)"
+                  placeholder="उदा. 9876543210"
                   value={newCustPhone}
                   onChange={(e) => setNewCustPhone(sanitizePhoneInput(e.target.value))}
                 />
@@ -696,7 +701,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
           <div className="card-surface" style={{ width: '100%', maxWidth: '440px', padding: '2rem', background: '#ffffff' }}>
             <h3 style={{ marginBottom: '0.4rem', fontSize: '1.3rem', color: 'var(--text-heading)' }}>{t.recordPaymentTitle || t.payDue}</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.4rem' }}>
-              {t.customerLabel || 'Customer'}: <strong>{customerDetails.customer.name}</strong> ({t.currentDueLabel || 'Current Due'}: ₹{customerDetails.totalDue})
+              ग्राहकाचे नाव: <strong>{customerDetails.customer.name}</strong> (सध्याची उधारी: ₹{customerDetails.totalDue})
             </p>
 
             <form onSubmit={handleRecordPayment}>
@@ -711,7 +716,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   max={customerDetails.totalDue}
                   className="input-field"
                   required
-                  placeholder={`Max ₹${Number(customerDetails.totalDue || 0).toFixed(2)}`}
+                  placeholder={`रक्कम ₹${Number(customerDetails.totalDue || 0).toFixed(2)}`}
                   value={payAmount}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -724,7 +729,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                   }}
                 />
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
-                  जास्तीत जास्त जमा रक्कम: <strong>₹{Number(customerDetails.totalDue || 0).toFixed(2)}</strong> (Max allowed: ₹{Number(customerDetails.totalDue || 0).toFixed(2)})
+                  जास्तीत जास्त जमा रक्कम: <strong>₹{Number(customerDetails.totalDue || 0).toFixed(2)}</strong>
                 </span>
               </div>
 
@@ -751,7 +756,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 <input
                   type="text"
                   className="input-field"
-                  placeholder={t.notePlaceholder || "e.g. Paid in full"}
+                  placeholder="उदा. सर्व रक्कम जमा"
                   value={payNote}
                   onChange={(e) => setPayNote(e.target.value)}
                 />
@@ -786,7 +791,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
           <div className="card-surface" style={{ width: '100%', maxWidth: '440px', padding: '2rem', background: '#ffffff' }}>
             <h3 style={{ marginBottom: '0.4rem', fontSize: '1.3rem', color: 'var(--danger)' }}>{t.addDueTitle || 'नवीन उधारी जोडणे'}</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '1.4rem' }}>
-              {t.customerLabel || 'Customer'}: <strong>{customerDetails.customer.name}</strong> ({t.currentDueLabel || 'Current Due'}: ₹{customerDetails.totalDue})
+              ग्राहकाचे नाव: <strong>{customerDetails.customer.name}</strong> (सध्याची उधारी: ₹{customerDetails.totalDue})
             </p>
 
             <form onSubmit={handleAddDue}>
@@ -806,12 +811,13 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
               <div style={{ marginBottom: '1.6rem' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                  {t.reasonNoteLabel || 'कारणाचे नाव / नोट'}
+                  {t.reasonNoteLabel || 'कारणाचे नाव / नोट'} *
                 </label>
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="उदा. दूध व किराणा सामान उधारी"
+                  required
+                  placeholder="उदा. किराणा सामान उधारी (आवश्यक)"
                   value={dueNote}
                   onChange={(e) => setDueNote(e.target.value)}
                 />
@@ -861,7 +867,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
             {/* Modal Header Bar */}
             <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.85rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-heading)' }}>
-                उधारी बील पावती (Bill Receipt) #{selectedTxBill.billId}
+                उधारी बील पावती #{selectedTxBill.billId}
               </h3>
 
               <button
@@ -907,13 +913,13 @@ export default function LedgerManagement({ setActiveTab, t }) {
               {/* Customer & Invoice Meta Header */}
               <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '0.45rem 0', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                 <div>
-                  <div><strong>NAME :</strong> {selectedTxBill.customerName}</div>
-                  <div><strong>PH :</strong> {selectedTxBill.customerPhone || ''}</div>
+                  <div><strong>नाव :</strong> {selectedTxBill.customerName}</div>
+                  <div><strong>मोबाईल :</strong> {selectedTxBill.customerPhone || ''}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div><strong>Bill No. :</strong> {selectedTxBill.billId}</div>
-                  <div><strong>Date :</strong> {new Date(selectedTxBill.createdAt).toLocaleDateString('en-GB')}</div>
-                  <div><strong>Time :</strong> {new Date(selectedTxBill.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                  <div><strong>बिल नंबर :</strong> {selectedTxBill.billId}</div>
+                  <div><strong>दिनांक :</strong> {new Date(selectedTxBill.createdAt).toLocaleDateString('en-GB')}</div>
+                  <div><strong>वेळ :</strong> {new Date(selectedTxBill.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
                 </div>
               </div>
 
@@ -921,12 +927,12 @@ export default function LedgerManagement({ setActiveTab, t }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>S/N</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>Particulars</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>अ.क्र.</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>विवरण</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>प्रमाण</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>युनिट</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>दर</th>
+                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>रक्कम</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -935,7 +941,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                       <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
                       <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
+                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'नग'}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
                       <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
@@ -945,7 +951,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
 
               {/* Total Items & Total Amount */}
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {(selectedTxBill.items || []).length}</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>एकूण वस्तू : {(selectedTxBill.items || []).length}</span>
                 <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
                   एकूण रक्कम : {Number(selectedTxBill.totalAmount || 0).toFixed(2)}
                 </span>
@@ -954,23 +960,23 @@ export default function LedgerManagement({ setActiveTab, t }) {
               {/* Payment Details Section */}
               <div style={{ borderBottom: '1px solid #000', paddingBottom: '0.45rem', marginBottom: '0.65rem', fontSize: '0.8rem' }}>
                 <div style={{ textAlign: 'center', fontWeight: 800, marginBottom: '0.25rem', letterSpacing: '0.05em' }}>
-                  PAYMENT DETAILS
+                  पेमेंट माहिती
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <div>
-                    <div>CASH REC. : {selectedTxBill.paymentType === 'CASH' && selectedTxBill.paymentStatus === 'PAID' ? Number(selectedTxBill.amountPaid).toFixed(2) : '0.00'}</div>
-                    <div>PHONE PAY : {selectedTxBill.paymentType === 'UPI' && selectedTxBill.paymentStatus === 'PAID' ? Number(selectedTxBill.amountPaid).toFixed(2) : '0.00'}</div>
+                    <div>रोख जमा : {selectedTxBill.paymentType === 'CASH' && selectedTxBill.paymentStatus === 'PAID' ? Number(selectedTxBill.amountPaid).toFixed(2) : '0.00'}</div>
+                    <div>फोनपे / युपीआय : {selectedTxBill.paymentType === 'UPI' && selectedTxBill.paymentStatus === 'PAID' ? Number(selectedTxBill.amountPaid).toFixed(2) : '0.00'}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div>RETURN AMT : 0.00</div>
-                    <div>CREDIT : {selectedTxBill.paymentStatus === 'UNPAID' ? Number(selectedTxBill.totalAmount).toFixed(2) : '0.00'}</div>
+                    <div>परत रक्कम : 0.00</div>
+                    <div>उधारी : {selectedTxBill.paymentStatus === 'UNPAID' ? Number(selectedTxBill.totalAmount).toFixed(2) : '0.00'}</div>
                   </div>
                 </div>
               </div>
 
               {/* Footer Notice */}
               <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.76rem', color: '#444' }}>
-                धन्यवाद, पुन्हा या! • Thank You!
+                धन्यवाद, पुन्हा या!
               </div>
             </div>
 
@@ -983,7 +989,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem' }}
               >
                 <PrinterIcon size={16} />
-                {t.printBtn || 'Print Receipt'}
+                {t.printBtn || 'पावती प्रिंट करा'}
               </button>
 
               <button
@@ -993,7 +999,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
               >
                 <DownloadIcon size={16} color="var(--primary)" />
-                Download PDF
+                PDF डाऊनलोड
               </button>
 
               <button
@@ -1002,7 +1008,7 @@ export default function LedgerManagement({ setActiveTab, t }) {
                 onClick={() => setShowBillModal(false)}
                 style={{ padding: '0.55rem 1.2rem', fontSize: '0.88rem' }}
               >
-                {t.closeBtn || 'Close'}
+                {t.closeBtn || 'बंद करा'}
               </button>
             </div>
 

@@ -30,6 +30,10 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
 
+  // Pagination State (20 items per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   // Modal form state
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -126,7 +130,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       message: message,
       onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })),
       onCancel: null,
-      confirmText: 'ठीक आहे (OK)',
+      confirmText: 'ठीक आहे',
       cancelText: ''
     });
   };
@@ -137,8 +141,8 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       type: 'danger',
       title: title,
       message: message,
-      confirmText: 'हटवा (Delete)',
-      cancelText: 'रद्द करा (Cancel)',
+      confirmText: 'हटवा',
+      cancelText: 'रद्द करा',
       onConfirm: () => {
         setModalConfig((prev) => ({ ...prev, isOpen: false }));
         if (onConfirmFn) onConfirmFn();
@@ -240,6 +244,17 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     }
     return sortDirection === 'asc' ? valA - valB : valB - valA;
   });
+
+  // Reset page when search or category filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategoryFilter]);
+
+  // Pagination Calculations (20 items per page)
+  const totalPages = Math.ceil(sortedStockList.length / itemsPerPage) || 1;
+  const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (validCurrentPage - 1) * itemsPerPage;
+  const paginatedStockList = sortedStockList.slice(startIndex, startIndex + itemsPerPage);
 
   // Sort Indicator Icon Component
   const RenderSortIcon = ({ field }) => {
@@ -501,7 +516,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                 </td>
               </tr>
             ) : (
-              sortedStockList.map((item) => {
+              paginatedStockList.map((item) => {
                 const isLowStock = item.quantity <= (item.minStockAlert || 5);
                 const catStyleClass = getCategoryClass(item.category);
 
@@ -591,6 +606,80 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
             )}
           </tbody>
         </table>
+
+        {/* Pagination Controls Bar (20 Items Per Page) */}
+        {sortedStockList.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.85rem 1.2rem',
+            borderTop: '1px solid var(--border-color)',
+            background: 'var(--bg-surface-raised)',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            fontSize: '0.84rem'
+          }}>
+            <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+              दाखवत आहे: <strong>{startIndex + 1} - {Math.min(startIndex + itemsPerPage, sortedStockList.length)}</strong> (एकूण <strong>{sortedStockList.length}</strong> माल) • पान <strong>{validCurrentPage}</strong> / {totalPages}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={validCurrentPage <= 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.8rem',
+                  opacity: validCurrentPage <= 1 ? 0.5 : 1,
+                  cursor: validCurrentPage <= 1 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                ← मागे
+              </button>
+
+              {/* Page Number Buttons */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => setCurrentPage(pageNum)}
+                  style={{
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid',
+                    borderColor: pageNum === validCurrentPage ? 'var(--primary)' : 'var(--border-color)',
+                    background: pageNum === validCurrentPage ? 'var(--primary)' : '#ffffff',
+                    color: pageNum === validCurrentPage ? '#ffffff' : 'var(--text-heading)',
+                    cursor: 'pointer',
+                    minWidth: '32px'
+                  }}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={validCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.8rem',
+                  opacity: validCurrentPage >= totalPages ? 0.5 : 1,
+                  cursor: validCurrentPage >= totalPages ? 'not-allowed' : 'pointer'
+                }}
+              >
+                पुढे →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add / Edit Stock Modal */}
@@ -598,13 +687,14 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(28, 25, 23, 0.6)',
-          backdropFilter: 'blur(3px)',
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(5px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000,
-          padding: '1rem'
+          zIndex: 100000,
+          overflowY: 'auto',
+          padding: '1.5rem 1rem'
         }}>
           <div className="card-surface" style={{ width: '100%', maxWidth: '540px', padding: '2.2rem', background: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <h3 style={{ marginBottom: '1.5rem', fontSize: '1.4rem', color: 'var(--text-heading)' }}>
@@ -620,7 +710,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   type="text"
                   className="input-field"
                   required
-                  placeholder="e.g. Kolam Rice / बास्मती तांदूळ 1kg"
+                  placeholder="उदा. बास्मती तांदूळ १ कि.ग्रा."
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
@@ -657,13 +747,11 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                   >
                     <option value="kg">{t.unitKg}</option>
                     <option value="g">{t.unitG}</option>
-                    <option value="unit">{t.unitUnit || 'unit'}</option>
+                    <option value="unit">{t.unitUnit || 'नग'}</option>
                     <option value="liter">{t.unitLiter}</option>
-                    <option value="ml">{t.unitMl || 'ml'}</option>
+                    <option value="ml">{t.unitMl || 'मिली'}</option>
                     <option value="meter">{t.unitMeter}</option>
-                    <option value="quintal">{t.unitQuintal || 'quintal'}</option>
-                    <option value="brass">{t.unitBrass || 'brass'}</option>
-                    <option value="feet">{t.unitFeet || 'feet'}</option>
+                    <option value="quintal">{t.unitQuintal || 'क्विंटल'}</option>
                   </select>
                 </div>
               </div>
@@ -768,7 +856,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
             शिवरत्न किराणा & जनरल स्टोअर्स — खंडोबाचीवाडी
           </h1>
           <p style={{ fontSize: '1.05rem', color: '#4338ca', fontWeight: 700, margin: '0.3rem 0' }}>
-            {t.stockTitle} (Stock Inventory Report)
+            {t.stockTitle} (साठा अहवाल)
           </p>
           <p style={{ fontSize: '0.85rem', color: '#78716c', margin: 0 }}>
             {t.receiptDate}: {new Date().toLocaleString()}
@@ -788,7 +876,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
             </h3>
           </div>
           <div>
-            <span style={{ fontSize: '0.82rem', color: '#78716c', fontWeight: 700 }}>Total Inventory Value:</span>
+            <span style={{ fontSize: '0.82rem', color: '#78716c', fontWeight: 700 }}>एकूण साठा मूल्य:</span>
             <h3 style={{ fontSize: '1.4rem', margin: 0, color: '#4338ca', fontWeight: 800 }}>
               ₹{stockList.reduce((acc, i) => acc + (i.quantity * i.sellingPrice), 0).toLocaleString()}
             </h3>
