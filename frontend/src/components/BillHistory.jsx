@@ -22,6 +22,8 @@ import html2canvas from 'html2canvas';
 import { billAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import CustomModal from './CustomModal';
+import BluetoothPrinterModal from './BluetoothPrinterModal';
+import bluetoothPrinter from '../services/bluetoothPrinter';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput } from '../utils/formatters';
 
 export default function BillHistory({ setActiveTab, t }) {
@@ -43,6 +45,7 @@ export default function BillHistory({ setActiveTab, t }) {
   const [selectedBill, setSelectedBill] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [showBtPrinterModal, setShowBtPrinterModal] = useState(false);
 
   // Custom UI Dialog Modal State
   const [modalConfig, setModalConfig] = useState({
@@ -612,12 +615,22 @@ export default function BillHistory({ setActiveTab, t }) {
             <div className="no-print" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                className="btn-secondary"
-                onClick={() => window.print()}
-                style={{ padding: '0.55rem 1.1rem', fontSize: '0.88rem' }}
+                className="btn-primary"
+                onClick={async () => {
+                  if (bluetoothPrinter.isConnected()) {
+                    try {
+                      await bluetoothPrinter.printBill(selectedBill, 'history-bill-receipt-paper');
+                    } catch (err) {
+                      setShowBtPrinterModal(true);
+                    }
+                  } else {
+                    setShowBtPrinterModal(true);
+                  }
+                }}
+                style={{ padding: '0.55rem 1.2rem', fontSize: '0.88rem', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700 }}
               >
                 <PrinterIcon size={16} />
-                {t.printBtn || 'पावती प्रिंट करा'}
+                <span>बिल प्रिंट करा</span>
               </button>
 
               <button
@@ -664,6 +677,14 @@ export default function BillHistory({ setActiveTab, t }) {
         cancelText={modalConfig.cancelText}
         onConfirm={modalConfig.onConfirm}
         onCancel={modalConfig.onCancel}
+      />
+
+      {/* Bluetooth Thermal Printer Modal */}
+      <BluetoothPrinterModal
+        isOpen={showBtPrinterModal}
+        onClose={() => setShowBtPrinterModal(false)}
+        billData={selectedBill}
+        t={t}
       />
 
     </div>

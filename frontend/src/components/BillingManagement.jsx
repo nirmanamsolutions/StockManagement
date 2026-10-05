@@ -29,6 +29,8 @@ import { billAPI, stockAPI, ledgerAPI } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import CustomModal from './CustomModal';
 import CustomSelect from './CustomSelect';
+import BluetoothPrinterModal from './BluetoothPrinterModal';
+import bluetoothPrinter from '../services/bluetoothPrinter';
 import { formatQuantity, formatAmount, isIntegerUnit, sanitizeDecimalInput, sanitizeIntegerInput, sanitizePhoneInput, isValidPhone } from '../utils/formatters';
 
 // Unit normalization helper: converts 'pcs', 'pkt', 'packet', 'box', 'piece' into 'unit'
@@ -155,6 +157,7 @@ export default function BillingManagement({ setActiveTab, t }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingInlineCustomer, setIsSubmittingInlineCustomer] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [showBtPrinterModal, setShowBtPrinterModal] = useState(false);
 
   useEffect(() => {
     fetchStock();
@@ -674,12 +677,22 @@ export default function BillingManagement({ setActiveTab, t }) {
             <div className="no-print" style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                className="btn-secondary"
-                onClick={() => window.print()}
-                style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem' }}
+                className="btn-primary"
+                onClick={async () => {
+                  if (bluetoothPrinter.isConnected()) {
+                    try {
+                      await bluetoothPrinter.printBill(createdBill, 'pos-bill-receipt-paper');
+                    } catch (err) {
+                      setShowBtPrinterModal(true);
+                    }
+                  } else {
+                    setShowBtPrinterModal(true);
+                  }
+                }}
+                style={{ padding: '0.6rem 1.4rem', fontSize: '0.9rem', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700 }}
               >
                 <PrinterIcon size={18} />
-                {t.printBtn || 'Print Receipt'}
+                <span>बिल प्रिंट करा</span>
               </button>
 
               <button
@@ -1609,6 +1622,14 @@ export default function BillingManagement({ setActiveTab, t }) {
         cancelText={modalConfig.cancelText}
         onConfirm={modalConfig.onConfirm}
         onCancel={modalConfig.onCancel}
+      />
+
+      {/* Bluetooth Thermal Printer Modal */}
+      <BluetoothPrinterModal
+        isOpen={showBtPrinterModal}
+        onClose={() => setShowBtPrinterModal(false)}
+        billData={createdBill}
+        t={t}
       />
 
     </div>
