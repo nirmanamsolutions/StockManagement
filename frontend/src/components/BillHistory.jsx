@@ -46,6 +46,12 @@ export default function BillHistory({ setActiveTab, t }) {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [showBtPrinterModal, setShowBtPrinterModal] = useState(false);
+  const [paperWidth, setPaperWidth] = useState(localStorage.getItem('nirman_bt_printer_paper') || '80mm');
+
+  const handlePaperChange = (width) => {
+    setPaperWidth(width);
+    bluetoothPrinter.setPaperWidth(width);
+  };
 
   // Custom UI Dialog Modal State
   const [modalConfig, setModalConfig] = useState({
@@ -112,11 +118,16 @@ export default function BillHistory({ setActiveTab, t }) {
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const widthMm = paperWidth === '100mm' ? 100 : paperWidth === '58mm' ? 58 : 80;
+      const heightMm = Math.round((canvas.height * widthMm) / canvas.width);
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [widthMm, Math.max(heightMm, 30)],
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, widthMm, heightMm);
       pdf.save(`Invoice_${selectedBill?.billId || 'Receipt'}.pdf`);
     } catch (err) {
       console.error('Failed to download PDF receipt:', err);
@@ -481,7 +492,7 @@ export default function BillHistory({ setActiveTab, t }) {
           <div className="card-surface" style={{
             background: '#ffffff',
             width: '100%',
-            maxWidth: '560px',
+            maxWidth: paperWidth === '100mm' ? '680px' : paperWidth === '58mm' ? '460px' : '580px',
             borderRadius: 'var(--radius-lg)',
             padding: '1.75rem',
             position: 'relative',
@@ -504,18 +515,88 @@ export default function BillHistory({ setActiveTab, t }) {
               </button>
             </div>
 
+            {/* Paper Roll Size Switcher Bar (No Print) */}
+            <div className="no-print" style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              padding: '0.65rem 0.85rem',
+              marginBottom: '1.25rem',
+              textAlign: 'left'
+            }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-heading)', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>📦 रोल साईझ (Roll Size):</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700 }}>
+                  {paperWidth === '100mm' ? '100mm (4-इंच)' : paperWidth === '58mm' ? '58mm (2-इंच)' : '80mm (3-इंच)'}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={() => handlePaperChange('80mm')}
+                  style={{
+                    padding: '0.35rem 0.2rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid',
+                    borderColor: paperWidth === '80mm' ? '#16a34a' : '#cbd5e1',
+                    background: paperWidth === '80mm' ? '#f0fdf4' : '#ffffff',
+                    color: paperWidth === '80mm' ? '#15803d' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  80mm (3-इंच) ⭐
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePaperChange('100mm')}
+                  style={{
+                    padding: '0.35rem 0.2rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid',
+                    borderColor: paperWidth === '100mm' ? '#16a34a' : '#cbd5e1',
+                    background: paperWidth === '100mm' ? '#f0fdf4' : '#ffffff',
+                    color: paperWidth === '100mm' ? '#15803d' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  100mm (4-इंच)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePaperChange('58mm')}
+                  style={{
+                    padding: '0.35rem 0.2rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid',
+                    borderColor: paperWidth === '58mm' ? '#16a34a' : '#cbd5e1',
+                    background: paperWidth === '58mm' ? '#f0fdf4' : '#ffffff',
+                    color: paperWidth === '58mm' ? '#15803d' : '#334155',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  58mm (2-इंच)
+                </button>
+              </div>
+            </div>
+
             {/* Printable Paper Container */}
             <div 
               id="history-bill-receipt-paper"
-              className="printable-area"
+              className={`printable-area paper-${paperWidth}`}
               style={{
                 background: '#ffffff',
                 border: '1.5px solid #000000',
-                padding: '1.75rem 2.25rem',
+                padding: paperWidth === '100mm' ? '1.75rem 2.25rem' : paperWidth === '58mm' ? '1rem 0.85rem' : '1.5rem 1.75rem',
                 borderRadius: '0',
                 textAlign: 'left',
                 marginBottom: '1.25rem',
-                fontSize: '0.84rem',
+                fontSize: paperWidth === '100mm' ? '0.92rem' : paperWidth === '58mm' ? '0.76rem' : '0.84rem',
                 color: '#000000',
                 fontFamily: 'monospace, "Courier New", sans-serif',
                 boxShadow: 'var(--shadow-subtle)',
@@ -524,19 +605,19 @@ export default function BillHistory({ setActiveTab, t }) {
             >
               {/* Shop Title */}
               <div style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif' }}>
+                <h2 style={{ fontSize: paperWidth === '100mm' ? '1.6rem' : paperWidth === '58mm' ? '1.15rem' : '1.4rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif', lineHeight: 1.25 }}>
                   {t.receiptHeaderTitle || 'शिवरत्न किराणा & जनरल स्टोअर्स'}
                 </h2>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700 }}>
+                <div style={{ fontSize: paperWidth === '100mm' ? '0.95rem' : paperWidth === '58mm' ? '0.75rem' : '0.88rem', fontWeight: 700 }}>
                   {t.receiptHeaderSubtitle || 'किराणा आणि जनरल स्टोअर्स खंडोबाचीवाडी'}
                 </div>
-                <div style={{ fontSize: '0.74rem', color: '#333' }}>
+                <div style={{ fontSize: paperWidth === '100mm' ? '0.8rem' : paperWidth === '58mm' ? '0.7rem' : '0.74rem', color: '#333' }}>
                   {t.receiptHeaderAddress || 'खंडोबाचीवाडी, MOB NO:- 9763950797'}
                 </div>
               </div>
 
               {/* Customer & Invoice Meta Header */}
-              <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '0.45rem 0', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+              <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '0.45rem 0', marginBottom: '0.65rem', display: 'flex', justifyContent: 'space-between', fontSize: paperWidth === '58mm' ? '0.72rem' : '0.8rem' }}>
                 <div>
                   <div><strong>नाव :</strong> {selectedBill.customerName}</div>
                   <div>
@@ -555,26 +636,26 @@ export default function BillHistory({ setActiveTab, t }) {
               </div>
 
               {/* Items Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: paperWidth === '100mm' ? '0.88rem' : paperWidth === '58mm' ? '0.72rem' : '0.8rem', marginBottom: '0.65rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '7%' }}>अ.क्र.</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '38%', wordBreak: 'break-word' }}>विवरण</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>प्रमाण</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>युनिट</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>दर</th>
-                    <th style={{ padding: '0.35rem 0.2rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>रक्कम</th>
+                    <th style={{ padding: '0.35rem 0.12rem', width: '10%' }}>अ.क्र.</th>
+                    <th style={{ padding: '0.35rem 0.12rem', width: '36%', wordBreak: 'break-word' }}>विवरण</th>
+                    <th style={{ padding: '0.35rem 0.12rem', width: '12%', textAlign: 'right', whiteSpace: 'nowrap' }}>प्रमाण</th>
+                    <th style={{ padding: '0.35rem 0.12rem', width: '12%', textAlign: 'center', whiteSpace: 'nowrap' }}>युनिट</th>
+                    <th style={{ padding: '0.35rem 0.12rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>दर</th>
+                    <th style={{ padding: '0.35rem 0.12rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>रक्कम</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedBill.items.map((item, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
-                      <td style={{ padding: '0.4rem 0.2rem', verticalAlign: 'top' }}>{idx + 1}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'नग'}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
-                      <td style={{ padding: '0.4rem 0.2rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
+                      <td style={{ padding: '0.4rem 0.12rem', verticalAlign: 'top' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.4rem 0.12rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
+                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
+                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'नग'}</td>
+                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
+                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -613,9 +694,24 @@ export default function BillHistory({ setActiveTab, t }) {
 
             {/* Modal Actions */}
             <div className="no-print" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {/* PRIMARY PLUGGED-IN USB DIRECT PRINT BUTTON */}
               <button
                 type="button"
                 className="btn-primary"
+                onClick={() => {
+                  window.print();
+                }}
+                style={{ padding: '0.55rem 1.2rem', fontSize: '0.88rem', background: '#16a34a', borderColor: '#16a34a', fontWeight: 800 }}
+                title="डायरेक्ट जोडलेल्या प्रिंटरवर (USB Plugged-In) बिल छापा"
+              >
+                <PrinterIcon size={16} />
+                <span>बिल प्रिंट करा</span>
+              </button>
+
+              {/* SECONDARY BLUETOOTH PRINT BUTTON */}
+              <button
+                type="button"
+                className="btn-secondary"
                 onClick={async () => {
                   if (bluetoothPrinter.isConnected()) {
                     try {
@@ -627,10 +723,10 @@ export default function BillHistory({ setActiveTab, t }) {
                     setShowBtPrinterModal(true);
                   }
                 }}
-                style={{ padding: '0.55rem 1.2rem', fontSize: '0.88rem', background: '#16a34a', borderColor: '#16a34a', fontWeight: 700 }}
+                style={{ padding: '0.55rem 0.95rem', fontSize: '0.82rem' }}
+                title="वायरलेस ब्लूटूथ प्रिंटर जोडा किंवा छापा"
               >
-                <PrinterIcon size={16} />
-                <span>बिल प्रिंट करा</span>
+                <span>📶 Bluetooth ने प्रिंट</span>
               </button>
 
               <button

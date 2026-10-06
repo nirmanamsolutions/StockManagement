@@ -265,18 +265,18 @@ export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, bil
             तुमच्या <strong>Epson TM-T82X-II</strong> प्रिंटरमध्ये जो पेपर रोल टाकला आहे तो निवडा. बिलाची साईझ आपोआप त्यानुसार सेट होईल.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
             <button
               type="button"
               onClick={() => handlePaperChange('80mm')}
               style={{
-                padding: '0.65rem 0.5rem',
+                padding: '0.6rem 0.35rem',
                 borderRadius: '10px',
                 border: '2px solid',
                 borderColor: paperWidth === '80mm' ? '#16a34a' : '#cbd5e1',
                 background: paperWidth === '80mm' ? '#f0fdf4' : '#ffffff',
                 color: paperWidth === '80mm' ? '#15803d' : 'var(--text-body, #334155)',
-                fontSize: '0.82rem',
+                fontSize: '0.78rem',
                 fontWeight: 800,
                 cursor: 'pointer',
                 textAlign: 'center',
@@ -284,9 +284,33 @@ export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, bil
                 transition: 'all 0.15s ease'
               }}
             >
-              <div>80mm / 3-इंच रोल ⭐</div>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: paperWidth === '80mm' ? '#16a34a' : '#64748b' }}>
-                (Standard Epson Size)
+              <div>80mm (3-इंच) ⭐</div>
+              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: paperWidth === '80mm' ? '#16a34a' : '#64748b' }}>
+                (Epson TM-T82)
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handlePaperChange('100mm')}
+              style={{
+                padding: '0.6rem 0.35rem',
+                borderRadius: '10px',
+                border: '2px solid',
+                borderColor: paperWidth === '100mm' ? '#16a34a' : '#cbd5e1',
+                background: paperWidth === '100mm' ? '#f0fdf4' : '#ffffff',
+                color: paperWidth === '100mm' ? '#15803d' : 'var(--text-body, #334155)',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                textAlign: 'center',
+                boxShadow: paperWidth === '100mm' ? '0 2px 8px rgba(22, 163, 74, 0.15)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div>100mm (4-इंच)</div>
+              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: paperWidth === '100mm' ? '#16a34a' : '#64748b' }}>
+                (Wide 4" Roll)
               </span>
             </button>
 
@@ -294,13 +318,13 @@ export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, bil
               type="button"
               onClick={() => handlePaperChange('58mm')}
               style={{
-                padding: '0.65rem 0.5rem',
+                padding: '0.6rem 0.35rem',
                 borderRadius: '10px',
                 border: '2px solid',
                 borderColor: paperWidth === '58mm' ? '#16a34a' : '#cbd5e1',
                 background: paperWidth === '58mm' ? '#f0fdf4' : '#ffffff',
                 color: paperWidth === '58mm' ? '#15803d' : 'var(--text-body, #334155)',
-                fontSize: '0.82rem',
+                fontSize: '0.78rem',
                 fontWeight: 800,
                 cursor: 'pointer',
                 textAlign: 'center',
@@ -308,11 +332,15 @@ export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, bil
                 transition: 'all 0.15s ease'
               }}
             >
-              <div>58mm / 2-इंच रोल</div>
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: paperWidth === '58mm' ? '#16a34a' : '#64748b' }}>
-                (Small Spacer Roll)
+              <div>58mm (2-इंच)</div>
+              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: paperWidth === '58mm' ? '#16a34a' : '#64748b' }}>
+                (Small Roll)
               </span>
             </button>
+          </div>
+
+          <div style={{ marginTop: '0.65rem', padding: '0.5rem 0.75rem', background: '#eff6ff', borderRadius: '8px', fontSize: '0.75rem', color: '#1e40af', fontWeight: 600, border: '1px solid #bfdbfe' }}>
+            ℹ️ <strong>Epson TM-T82X-II माहिती:</strong> Epson च्या बॉडीमध्ये ३-इंच (80mm) पेपर रोल बसतो. 4-इंच (100mm) चा रोल वापरण्यासाठी 4-इंच लेबल/बिल प्रिंटर किंवा डायरेक्ट USB प्लग-इन वापरता येईल.
           </div>
         </div>
 

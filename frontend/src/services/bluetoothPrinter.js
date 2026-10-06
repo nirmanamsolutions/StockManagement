@@ -231,8 +231,12 @@ class BluetoothPrinterService {
     });
 
     // 2. Convert Canvas pixels into ESC/POS monochrome bit graphics
-    const is80mm = this.paperWidth === '80mm';
-    const targetWidth = is80mm ? 576 : 384; // 384px for 58mm printer
+    let targetWidth = 576; // Default 80mm (3-inch)
+    if (this.paperWidth === '100mm') {
+      targetWidth = 800; // 4-inch roll
+    } else if (this.paperWidth === '58mm') {
+      targetWidth = 384; // 2-inch roll
+    }
     const rasterBuffer = this.canvasToEscPosRaster(canvas, targetWidth);
 
     // 3. Print raster bytes over Bluetooth
