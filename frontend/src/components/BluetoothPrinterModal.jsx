@@ -249,80 +249,71 @@ export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, bil
           </div>
         </div>
 
-        {/* Simple Roll Size Banner for Client */}
+        {/* Paper Roll Size Selector for Epson Printer */}
         <div style={{
           background: '#f8fafc',
           border: '1px solid #e2e8f0',
           borderRadius: '12px',
-          padding: '0.85rem 1rem',
+          padding: '1rem',
           marginBottom: '1.25rem'
         }}>
-          <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-heading, #0f172a)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>📦 कागद रोल साईझ (Paper Roll Size):</span>
-            <span style={{ background: 'var(--primary-light, #e0e7ff)', color: 'var(--primary, #4f46e5)', padding: '0.25rem 0.65rem', borderRadius: '20px', fontSize: '0.78rem' }}>
-              {paperWidth === '80mm' ? '80mm (3-इंच)' : '58mm (2-इंच)'}
-            </span>
+          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-heading, #0f172a)', marginBottom: '0.45rem' }}>
+            📦 तुमच्या Epson प्रिंटरमधील सध्याची रोल साईझ (Select Paper Roll Size):
           </div>
 
-          <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted, #64748b)', lineHeight: 1.4 }}>
-            तुमच्या <strong>Epson TM-T82X-II</strong> दुकानातील प्रिंटरसाठी <strong>80mm / 3-इंच थर्मल रोल</strong> खरेदी करा.
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.78rem', color: 'var(--text-muted, #64748b)', lineHeight: 1.4 }}>
+            तुमच्या <strong>Epson TM-T82X-II</strong> प्रिंटरमध्ये जो पेपर रोल टाकला आहे तो निवडा. बिलाची साईझ आपोआप त्यानुसार सेट होईल.
           </p>
 
-          <button
-            type="button"
-            onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--primary, #4f46e5)',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              padding: 0,
-              marginTop: '0.45rem',
-              textDecoration: 'underline'
-            }}
-          >
-            {showAdvancedSettings ? 'पर्याय लपवा ▲' : 'रोल साईझ बदला (५८mm / ८०mm) ▼'}
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+            <button
+              type="button"
+              onClick={() => handlePaperChange('80mm')}
+              style={{
+                padding: '0.65rem 0.5rem',
+                borderRadius: '10px',
+                border: '2px solid',
+                borderColor: paperWidth === '80mm' ? '#16a34a' : '#cbd5e1',
+                background: paperWidth === '80mm' ? '#f0fdf4' : '#ffffff',
+                color: paperWidth === '80mm' ? '#15803d' : 'var(--text-body, #334155)',
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                textAlign: 'center',
+                boxShadow: paperWidth === '80mm' ? '0 2px 8px rgba(22, 163, 74, 0.15)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div>80mm / 3-इंच रोल ⭐</div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: paperWidth === '80mm' ? '#16a34a' : '#64748b' }}>
+                (Standard Epson Size)
+              </span>
+            </button>
 
-          {showAdvancedSettings && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.65rem' }}>
-              <button
-                type="button"
-                onClick={() => handlePaperChange('80mm')}
-                style={{
-                  padding: '0.45rem',
-                  borderRadius: '8px',
-                  border: '1.5px solid',
-                  borderColor: paperWidth === '80mm' ? 'var(--primary, #4f46e5)' : '#e2e8f0',
-                  background: paperWidth === '80mm' ? 'var(--primary-light, #e0e7ff)' : '#ffffff',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                80mm (3-इंच Epson) ⭐
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handlePaperChange('58mm')}
-                style={{
-                  padding: '0.45rem',
-                  borderRadius: '8px',
-                  border: '1.5px solid',
-                  borderColor: paperWidth === '58mm' ? 'var(--primary, #4f46e5)' : '#e2e8f0',
-                  background: paperWidth === '58mm' ? 'var(--primary-light, #e0e7ff)' : '#ffffff',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                58mm (2-इंच लहान POS)
-              </button>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() => handlePaperChange('58mm')}
+              style={{
+                padding: '0.65rem 0.5rem',
+                borderRadius: '10px',
+                border: '2px solid',
+                borderColor: paperWidth === '58mm' ? '#16a34a' : '#cbd5e1',
+                background: paperWidth === '58mm' ? '#f0fdf4' : '#ffffff',
+                color: paperWidth === '58mm' ? '#15803d' : 'var(--text-body, #334155)',
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                textAlign: 'center',
+                boxShadow: paperWidth === '58mm' ? '0 2px 8px rgba(22, 163, 74, 0.15)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div>58mm / 2-इंच रोल</div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: paperWidth === '58mm' ? '#16a34a' : '#64748b' }}>
+                (Small Spacer Roll)
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Feedback Banners */}
