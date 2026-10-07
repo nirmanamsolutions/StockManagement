@@ -7,7 +7,7 @@ import {
 } from '@animateicons/react/lucide';
 import bluetoothPrinter from '../services/bluetoothPrinter';
 
-export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, billData, t = {} }) {
+export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, onPaperChange, billData, t = {} }) {
   const [isSupported, setIsSupported] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [printerName, setPrinterName] = useState(null);
@@ -59,6 +59,8 @@ export default function BluetoothPrinterModal({ isOpen, onClose, onPrintNow, bil
   const handlePaperChange = (width) => {
     setPaperWidth(width);
     bluetoothPrinter.setPaperWidth(width);
+    // Keep the receipt preview and its PDF export in sync with the printer setting.
+    onPaperChange?.(width);
   };
 
   const handleTestPrint = async () => {

@@ -119,15 +119,19 @@ export default function BillHistory({ setActiveTab, t }) {
 
       const imgData = canvas.toDataURL('image/png');
       const widthMm = paperWidth === '100mm' ? 100 : paperWidth === '58mm' ? 58 : 80;
-      const heightMm = Math.round((canvas.height * widthMm) / canvas.width);
+      // Thermal printers cannot print to the extreme paper edges. Export a
+      // safe image width so PDF printing preserves all receipt columns.
+      const printableWidthMm = paperWidth === '100mm' ? 92 : paperWidth === '58mm' ? 50 : 72;
+      const horizontalMarginMm = (widthMm - printableWidthMm) / 2;
+      const heightMm = Math.round((canvas.height * printableWidthMm) / canvas.width);
 
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [widthMm, Math.max(heightMm, 30)],
+        format: [widthMm, Math.max(heightMm + 4, 30)],
       });
 
-      pdf.addImage(imgData, 'PNG', 0, 0, widthMm, heightMm);
+      pdf.addImage(imgData, 'PNG', horizontalMarginMm, 2, printableWidthMm, heightMm, undefined, 'FAST');
       pdf.save(`Invoice_${selectedBill?.billId || 'Receipt'}.pdf`);
     } catch (err) {
       console.error('Failed to download PDF receipt:', err);
@@ -604,14 +608,14 @@ export default function BillHistory({ setActiveTab, t }) {
               }}
             >
               {/* Shop Title */}
-              <div style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
-                <h2 style={{ fontSize: paperWidth === '100mm' ? '1.6rem' : paperWidth === '58mm' ? '1.15rem' : '1.4rem', fontWeight: 800, margin: '0 0 0.15rem 0', fontFamily: 'Devanagari, "Plus Jakarta Sans", sans-serif', lineHeight: 1.25 }}>
+              <div className="receipt-store-header" style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
+                <h2 className="receipt-store-title" style={{ fontSize: paperWidth === '100mm' ? '1.6rem' : paperWidth === '58mm' ? '1.15rem' : '1.4rem' }}>
                   {t.receiptHeaderTitle || 'शिवरत्न किराणा & जनरल स्टोअर्स'}
                 </h2>
-                <div style={{ fontSize: paperWidth === '100mm' ? '0.95rem' : paperWidth === '58mm' ? '0.75rem' : '0.88rem', fontWeight: 700 }}>
+                <div className="receipt-store-subtitle" style={{ fontSize: paperWidth === '100mm' ? '0.95rem' : paperWidth === '58mm' ? '0.75rem' : '0.88rem' }}>
                   {t.receiptHeaderSubtitle || 'किराणा आणि जनरल स्टोअर्स खंडोबाचीवाडी'}
                 </div>
-                <div style={{ fontSize: paperWidth === '100mm' ? '0.8rem' : paperWidth === '58mm' ? '0.7rem' : '0.74rem', color: '#333' }}>
+                <div className="receipt-store-address" style={{ fontSize: paperWidth === '100mm' ? '0.8rem' : paperWidth === '58mm' ? '0.68rem' : '0.74rem' }}>
                   {t.receiptHeaderAddress || 'खंडोबाचीवाडी, MOB NO:- 9763950797'}
                 </div>
               </div>
@@ -779,6 +783,7 @@ export default function BillHistory({ setActiveTab, t }) {
       <BluetoothPrinterModal
         isOpen={showBtPrinterModal}
         onClose={() => setShowBtPrinterModal(false)}
+        onPaperChange={handlePaperChange}
         billData={selectedBill}
         t={t}
       />
