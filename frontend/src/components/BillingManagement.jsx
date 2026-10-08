@@ -671,7 +671,7 @@ export default function BillingManagement({ setActiveTab, t }) {
               style={{
                 background: '#ffffff',
                 border: '1.5px solid #000000',
-                padding: paperWidth === '100mm' ? '1.75rem 2.25rem' : paperWidth === '58mm' ? '1rem 0.85rem' : '1.5rem 1.75rem',
+                padding: paperWidth === '100mm' ? '1.75rem 2.25rem' : paperWidth === '58mm' ? '1rem 0.85rem' : '1.5rem 1.25rem',
                 borderRadius: '0',
                 textAlign: 'left',
                 marginBottom: '1.5rem',
@@ -709,23 +709,23 @@ export default function BillingManagement({ setActiveTab, t }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: paperWidth === '100mm' ? '0.88rem' : paperWidth === '58mm' ? '0.72rem' : '0.8rem', marginBottom: '0.65rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                    <th style={{ padding: '0.35rem 0.12rem', width: '10%' }}>S/N</th>
-                    <th style={{ padding: '0.35rem 0.12rem', width: '36%', wordBreak: 'break-word' }}>Particulars</th>
-                    <th style={{ padding: '0.35rem 0.12rem', width: '12%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
-                    <th style={{ padding: '0.35rem 0.12rem', width: '12%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
-                    <th style={{ padding: '0.35rem 0.12rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
-                    <th style={{ padding: '0.35rem 0.12rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
+                    <th style={{ padding: '0.3rem 0.1rem', width: '10%' }}>S/N</th>
+                    <th style={{ padding: '0.3rem 0.1rem', width: '36%', wordBreak: 'break-word' }}>Particulars</th>
+                    <th style={{ padding: '0.3rem 0.1rem', width: '12%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
+                    <th style={{ padding: '0.3rem 0.1rem', width: '12%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
+                    <th style={{ padding: '0.3rem 0.1rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
+                    <th style={{ padding: '0.3rem 0.1rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
                   </tr>
                 </thead>
                 <tbody>
                   {createdBill.items.map((item, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
-                      <td style={{ padding: '0.4rem 0.12rem', verticalAlign: 'top' }}>{idx + 1}</td>
-                      <td style={{ padding: '0.4rem 0.12rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
-                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
-                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
-                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
-                      <td style={{ padding: '0.4rem 0.12rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
+                      <td style={{ padding: '0.3rem 0.1rem', verticalAlign: 'top' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.3rem 0.1rem', fontWeight: 700, wordBreak: 'break-word' }}>{item.name}</td>
+                      <td style={{ padding: '0.3rem 0.1rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
+                      <td style={{ padding: '0.3rem 0.1rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
+                      <td style={{ padding: '0.3rem 0.1rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
+                      <td style={{ padding: '0.3rem 0.1rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
