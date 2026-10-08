@@ -951,7 +951,7 @@ select.select-compact {
     max-width: 72mm !important;
     margin-left: 0mm !important;
     margin-right: 0.3mm !important;
-    padding: 3mm 2mm !important;
+    padding: 3mm 0.5mm !important;
     font-size: 9.5pt !important;
   }
   .printable-area.paper-80mm h2 {

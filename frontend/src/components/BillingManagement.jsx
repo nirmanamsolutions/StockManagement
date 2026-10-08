@@ -671,7 +671,7 @@ export default function BillingManagement({ setActiveTab, t }) {
               style={{
                 background: '#ffffff',
                 border: '1.5px solid #000000',
-                padding: paperWidth === '100mm' ? '1.75rem 2.25rem' : paperWidth === '58mm' ? '0.85rem 0.65rem' : '1.25rem 0.85rem',
+                padding: paperWidth === '100mm' ? '1.75rem 2.25rem' : paperWidth === '58mm' ? '0.85rem 0.45rem' : '1.25rem 0.45rem',
                 borderRadius: '0',
                 textAlign: 'left',
                 marginBottom: '1.5rem',
