@@ -949,8 +949,8 @@ select.select-compact {
     /* 80mm / 3-inch rolls - 3 inch = 76.2mm, safe printable area ~72mm */
     width: 72mm !important;
     max-width: 72mm !important;
-    margin-left: 2mm !important;
-    margin-right: 2mm !important;
+    margin-left: 0.3mm !important;
+    margin-right: 0.3mm !important;
     padding: 3mm 2mm !important;
     font-size: 9.5pt !important;
   }
