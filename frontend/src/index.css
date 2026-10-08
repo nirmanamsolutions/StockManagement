@@ -946,12 +946,12 @@ select.select-compact {
   }
 
   .printable-area.paper-80mm {
-    /* 80mm / 3-inch rolls - maximum width utilization with ultra-minimal margins */
-    width: 79mm !important;
-    max-width: 79mm !important;
-    margin-left: 0.5mm !important;
-    margin-right: 0.5mm !important;
-    padding: 4mm 1mm !important;
+    /* 80mm / 3-inch rolls - 3 inch = 76.2mm exact with minimal margins */
+    width: 74mm !important;
+    max-width: 74mm !important;
+    margin-left: 1mm !important;
+    margin-right: 1mm !important;
+    padding: 3mm 1mm !important;
     font-size: 9.5pt !important;
   }
   .printable-area.paper-80mm h2 {
