@@ -668,7 +668,7 @@ export default function BillHistory({ setActiveTab, t }) {
               {/* Total Items & Total Amount */}
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>एकूण वस्तू : {selectedBill.items.length}</span>
-                <span style={{ fontSize: '1.05rem', fontWeight: 800 }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>
                   एकूण रक्कम : {formatAmount(selectedBill.totalAmount)}
                 </span>
               </div>

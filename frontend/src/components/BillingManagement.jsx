@@ -733,7 +733,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {createdBill.items.length}</span>
-                <span style={{ fontSize: '1.05rem', fontWeight: 800 }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 800 }}>
                   एकूण रक्कम : {formatAmount(createdBill.totalAmount)}
                 </span>
               </div>
