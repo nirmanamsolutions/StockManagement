@@ -609,7 +609,7 @@ export default function BillHistory({ setActiveTab, t }) {
             >
               {/* Shop Title */}
               <div className="receipt-store-header" style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
-                <h2 className="receipt-store-title" style={{ fontSize: paperWidth === '100mm' ? '1.6rem' : paperWidth === '58mm' ? '1.15rem' : '1.4rem' }}>
+                <h2 className="receipt-store-title" style={{ fontSize: paperWidth === '100mm' ? '1.6rem' : paperWidth === '58mm' ? '1.05rem' : '1.2rem' }}>
                   {t.receiptHeaderTitle || 'शिवरत्न किराणा & जनरल स्टोअर्स'}
                 </h2>
                 <div className="receipt-store-subtitle" style={{ fontSize: paperWidth === '100mm' ? '0.95rem' : paperWidth === '58mm' ? '0.75rem' : '0.88rem' }}>
@@ -668,7 +668,7 @@ export default function BillHistory({ setActiveTab, t }) {
               {/* Total Items & Total Amount */}
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>एकूण वस्तू : {selectedBill.items.length}</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                <span style={{ fontSize: '1.05rem', fontWeight: 800 }}>
                   एकूण रक्कम : {formatAmount(selectedBill.totalAmount)}
                 </span>
               </div>

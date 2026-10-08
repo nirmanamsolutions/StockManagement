@@ -686,7 +686,7 @@ export default function BillingManagement({ setActiveTab, t }) {
             >
               {/* Store Title */}
               <div className="receipt-store-header" style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
-                <h2 className="receipt-store-title" style={{ fontSize: paperWidth === '100mm' ? '1.6rem' : paperWidth === '58mm' ? '1.15rem' : '1.4rem' }}>
+                <h2 className="receipt-store-title" style={{ fontSize: paperWidth === '100mm' ? '1.6rem' : paperWidth === '58mm' ? '1.05rem' : '1.2rem' }}>
                   {t.receiptHeaderTitle || 'शिवरत्न किराणा & जनरल स्टोअर्स'}
                 </h2>
                 <div className="receipt-store-address" style={{ fontSize: paperWidth === '100mm' ? '0.8rem' : paperWidth === '58mm' ? '0.68rem' : '0.74rem' }}>
@@ -733,7 +733,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
               <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {createdBill.items.length}</span>
-                <span style={{ fontSize: '1.25rem', fontWeight: 800 }}>
+                <span style={{ fontSize: '1.05rem', fontWeight: 800 }}>
                   एकूण रक्कम : {formatAmount(createdBill.totalAmount)}
                 </span>
               </div>
