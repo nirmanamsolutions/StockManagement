@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import LegalDocumentation from './LegalDocumentation';
+import { authAPI } from '../services/api';
 import {
   StoreIcon,
   UserIcon,
@@ -17,20 +18,27 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      // Validate credentials strictly: username = '9763950797', password = 'kirana@123'
-      if (username.trim() === '9763950797' && password === 'kirana@123') {
+    try {
+      const res = await authAPI.login(username.trim(), password);
+      if (res.data && res.data.success) {
+        // Save logged in user info
+        localStorage.setItem('kirana_user', JSON.stringify(res.data.data));
         onLogin();
       } else {
-        setErrorMsg(t.invalidCredentials || 'Invalid Admin Username or Password!');
-        setIsSubmitting(false);
+        setErrorMsg(res.data?.message || t.invalidCredentials || 'चुकीचा युझरनेम किंवा पासवर्ड!');
       }
-    }, 300);
+    } catch (err) {
+      console.error('Login error:', err);
+      const msg = err.response?.data?.message || 'चुकीचा युझरनेम किंवा पासवर्ड! कृपया पुन्हा प्रयत्न करा.';
+      setErrorMsg(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const [showLegalModal, setShowLegalModal] = useState(false);

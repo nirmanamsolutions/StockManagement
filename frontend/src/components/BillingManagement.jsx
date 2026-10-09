@@ -93,7 +93,6 @@ export default function BillingManagement({ setActiveTab, t }) {
   const [stockList, setStockList] = useState([]);
   const [loadingStock, setLoadingStock] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
 
   // Pagination State for Catalog (8 items per page - 2 full rows of 4 cards)
   const [currentPage, setCurrentPage] = useState(1);
@@ -101,7 +100,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery]);
 
   // Cart Items State: [{ productId, name, unit, sellingPrice, costPrice, quantity, subtotal, baseUnit }]
   const [cartItems, setCartItems] = useState([]);
@@ -167,7 +166,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
   useEffect(() => {
     fetchStock();
-  }, [selectedCategory]);
+  }, []);
 
   useEffect(() => {
     if (paymentStatus === 'UNPAID') {
@@ -178,7 +177,7 @@ export default function BillingManagement({ setActiveTab, t }) {
   const fetchStock = async (query = searchQuery) => {
     try {
       setLoadingStock(true);
-      const res = await stockAPI.getAll(query, selectedCategory);
+      const res = await stockAPI.getAll(query);
       setStockList(res.data.data || []);
     } catch (err) {
       console.error('Failed to load stock list:', err);
@@ -507,9 +506,7 @@ export default function BillingManagement({ setActiveTab, t }) {
 
   const filteredProducts = stockList
     .filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory ? item.category === selectedCategory : true;
-      return matchesSearch && matchesCategory;
+      return item.name.toLowerCase().includes(searchQuery.toLowerCase());
     })
     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'mr', { numeric: true, sensitivity: 'base' }));
 
@@ -867,7 +864,7 @@ export default function BillingManagement({ setActiveTab, t }) {
             {/* LEFT SIDE: PRODUCT CATALOG SEARCH & EDITABLE CATALOG CARDS GRID */}
             <div className={`pos-catalog-column ${mobilePosTab === 'cart' ? 'hide-mobile' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-              {/* Search Bar & Category Filters Toolbar */}
+              {/* Search Bar Toolbar */}
               <div className="card-surface" style={{ padding: '1rem 1.25rem', background: '#ffffff', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
 
@@ -884,47 +881,6 @@ export default function BillingManagement({ setActiveTab, t }) {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{ paddingLeft: '2.6rem', height: '44px', fontSize: '0.95rem' }}
                     />
-                  </div>
-
-                  {/* Category Pills */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', overflowX: 'auto', paddingBottom: '4px' }}>
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 700, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <FilterIcon size={14} color="var(--primary)" /> प्रकार:
-                    </span>
-
-                    {[
-                      { id: '', label: t.catAll || 'सर्व प्रकार' },
-                      { id: 'Grains & Pulses', label: t.catGrains || 'धान्य व डाळी' },
-                      { id: 'Oils & Ghee', label: t.catOils || 'तेल आणि तूप' },
-                      { id: 'Spices & Dryfruits', label: t.catSpices || 'मसाले व ड्रायफ्रूट्स' },
-                      { id: 'Beverages & Snacks', label: t.catSnacks || 'चहा, पेये व बिस्किटे' },
-                      { id: 'Soaps & Cleaning', label: t.catCleaning || 'साबण व स्वच्छता' },
-                      { id: 'General Kirana', label: t.catGeneral || 'जनरल किराणा' }
-                    ].map((cat) => {
-                      const isActive = selectedCategory === cat.id;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => setSelectedCategory(cat.id)}
-                          style={{
-                            padding: '0.35rem 0.85rem',
-                            borderRadius: '20px',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            border: '1px solid',
-                            borderColor: isActive ? 'var(--primary)' : 'var(--border-color)',
-                            background: isActive ? 'var(--primary)' : '#f8fafc',
-                            color: isActive ? '#ffffff' : 'var(--text-body)',
-                            whiteSpace: 'nowrap',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {cat.label}
-                        </button>
-                      );
-                    })}
                   </div>
 
                 </div>

@@ -15,13 +15,20 @@ const api = axios.create({
 
 // Stock API Services
 export const stockAPI = {
-  getAll: (search = '', category = '') =>
-    api.get(`/stock?search=${encodeURIComponent(search)}&category=${encodeURIComponent(category)}`),
+  getAll: (search = '') =>
+    api.get(`/stock?search=${encodeURIComponent(search)}`),
   getById: (id) => api.get(`/stock/${id}`),
   create: (data) => api.post('/stock', data),
   update: (id, data) => api.put(`/stock/${id}`, data),
   delete: (id) => api.delete(`/stock/${id}`),
   getPdfReport: () => api.get('/stock/pdf-report'),
+};
+
+// Auth API Services
+export const authAPI = {
+  login: (username, password) => api.post('/auth/login', { username, password }),
+  updateCredentials: (data) => api.put('/auth/update-credentials', data),
+  getMe: () => api.get('/auth/me'),
 };
 
 // Billing API Services

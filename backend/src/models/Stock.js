@@ -28,11 +28,6 @@ const stockSchema = new mongoose.Schema(
       trim: true,
       default: 'unit',
     },
-    category: {
-      type: String,
-      trim: true,
-      default: 'General',
-    },
     minStockAlert: {
       type: Number,
       default: 5,
@@ -45,7 +40,6 @@ const stockSchema = new mongoose.Schema(
 
 // High Performance Query Indexes
 stockSchema.index({ name: 'text' });
-stockSchema.index({ category: 1 });
 stockSchema.index({ updatedAt: -1 });
 
 module.exports = mongoose.model('Stock', stockSchema);

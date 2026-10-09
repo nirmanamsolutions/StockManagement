@@ -368,7 +368,7 @@ export default function HomeScreen({ setActiveTab, setStockModalState, t }) {
                     <div>
                       <h4 style={{ fontSize: '0.92rem', margin: 0, color: 'var(--text-heading)', fontWeight: 700 }}>{item.name}</h4>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.15rem 0 0 0' }}>
-                        {t.category}: <strong>{item.category || 'जनरल किराणा'}</strong> • {t.minStockAlert}: {item.minStockAlert || 5} {item.unit}
+                        {t.minStockAlert}: {item.minStockAlert || 5} {item.unit}
                       </p>
                     </div>
 

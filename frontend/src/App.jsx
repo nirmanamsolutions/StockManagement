@@ -6,6 +6,7 @@ import BillingManagement from './components/BillingManagement';
 import LedgerManagement from './components/LedgerManagement';
 import BillHistory from './components/BillHistory';
 import LoginPage from './components/LoginPage';
+import ProfileModal from './components/ProfileModal';
 import MobileBottomNav from './components/MobileBottomNav';
 import WebsitePageLoader from './components/WebsitePageLoader';
 import LegalDocumentation from './components/LegalDocumentation';
@@ -21,6 +22,7 @@ export default function App() {
   });
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [loadingSubtext, setLoadingSubtext] = useState('माहिती लोड होत आहे...');
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const tabMessages = {
     home: 'मुख्य डॅशबोर्ड लोड होत आहे...',
@@ -103,6 +105,7 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('kirana_admin_auth');
+    localStorage.removeItem('kirana_user');
     localStorage.removeItem('kirana_active_tab');
     setIsAuthenticated(false);
     setActiveTabState('home');
@@ -142,6 +145,13 @@ export default function App() {
         setLang={setLang} 
         t={t}
         onLogout={handleLogout}
+        onOpenProfile={() => setShowProfileModal(true)}
+      />
+
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        t={t}
       />
 
       <main className="page-enter-animation" key={activeTab} style={{ flex: 1, width: '100%' }}>

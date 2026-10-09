@@ -2,10 +2,11 @@ import React from 'react';
 import {
   StoreIcon,
   LogOutIcon,
+  UserIcon,
   ShieldCheckIcon
 } from '@animateicons/react/lucide';
 
-export default function Navbar({ setActiveTab, t, onLogout }) {
+export default function Navbar({ setActiveTab, t, onLogout, onOpenProfile }) {
   return (
     <header className="navbar-container">
       <div
@@ -90,25 +91,52 @@ export default function Navbar({ setActiveTab, t, onLogout }) {
           </div>
         </div>
 
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="btn-danger logout-btn"
-            title="सिस्टममधून बाहेर पडा"
-            style={{
-              padding: '0.45rem 0.65rem',
-              borderRadius: '8px',
-              fontSize: '0.8rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem'
-            }}
-          >
-            <LogOutIcon size={16} color="#ffffff" />
-            <span className="logout-text">{t.logoutBtn || 'बाहेर पडणे'}</span>
-          </button>
-        )}
+        {/* Right Action Buttons: Profile Icon + Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+          {onOpenProfile && (
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="btn-secondary"
+              title="प्रोफाईल व पासवर्ड बदला (Change Credentials)"
+              style={{
+                padding: '0.45rem 0.75rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: '#eef2ff',
+                color: 'var(--primary)',
+                borderColor: '#c7d2fe'
+              }}
+            >
+              <UserIcon size={16} color="var(--primary)" />
 
+            </button>
+          )}
+
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="btn-danger logout-btn"
+              title="सिस्टममधून बाहेर पडा"
+              style={{
+                padding: '0.45rem 0.65rem',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+            >
+              <LogOutIcon size={16} color="#ffffff" />
+              <span className="logout-text">{t.logoutBtn || 'बाहेर पडणे'}</span>
+            </button>
+          )}
+        </div>
 
       </div>
     </header>

@@ -13,16 +13,18 @@ const errorHandler = require('./src/middleware/errorHandler');
 const stockRoutes = require('./src/routes/stockRoutes');
 const billRoutes = require('./src/routes/billRoutes');
 const ledgerRoutes = require('./src/routes/ledgerRoutes');
+const authRoutes = require('./src/routes/authRoutes');
 
-// Controllers
+// Controllers & Utils
 const { cleanupPaidBills } = require('./src/controllers/billController');
-
+const { initDefaultAdmin } = require('./src/controllers/authController');
 const runAutoCleanup = require('./src/utils/autoCleanup');
 
 const app = express();
 
-// Connect Database & Run Auto Cleanup
-connectDB().then(() => {
+// Connect Database & Run Auto Cleanup & Initialize Admin User
+connectDB().then(async () => {
+  await initDefaultAdmin();
   runAutoCleanup();
 });
 
@@ -42,7 +44,8 @@ app.get('/', (req, res) => {
       health: '/api/health',
       stock: '/api/stock',
       bills: '/api/bills',
-      ledger: '/api/ledger'
+      ledger: '/api/ledger',
+      auth: '/api/auth'
     }
   });
 });
@@ -59,6 +62,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/stock', stockRoutes);
 app.use('/api/bills', billRoutes);
 app.use('/api/ledger', ledgerRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

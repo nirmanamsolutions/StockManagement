@@ -4,14 +4,11 @@ const Stock = require('../models/Stock');
 // @route   GET /api/stock
 exports.getAllStock = async (req, res, next) => {
   try {
-    const { search, category } = req.query;
+    const { search } = req.query;
     let query = {};
 
     if (search) {
       query.name = { $regex: search, $options: 'i' };
-    }
-    if (category) {
-      query.category = category;
     }
 
     const stockItems = await Stock.find(query).sort({ updatedAt: -1 }).lean();
@@ -45,7 +42,7 @@ const round2 = (num) => Math.round((Number(num) || 0) * 100) / 100;
 // @route   POST /api/stock
 exports.addStock = async (req, res, next) => {
   try {
-    const { name, costPrice, sellingPrice, quantity, unit, category, minStockAlert } = req.body;
+    const { name, costPrice, sellingPrice, quantity, unit, minStockAlert } = req.body;
 
     if (!name || costPrice === undefined || sellingPrice === undefined || quantity === undefined) {
       return res.status(400).json({
@@ -60,7 +57,6 @@ exports.addStock = async (req, res, next) => {
       sellingPrice: round2(sellingPrice),
       quantity: round2(quantity),
       unit: unit || 'unit',
-      category: category || 'General',
       minStockAlert: minStockAlert ? round2(minStockAlert) : 5,
     });
 
@@ -78,7 +74,7 @@ exports.addStock = async (req, res, next) => {
 // @route   PUT /api/stock/:id
 exports.updateStock = async (req, res, next) => {
   try {
-    const { name, costPrice, sellingPrice, quantity, unit, category, minStockAlert } = req.body;
+    const { name, costPrice, sellingPrice, quantity, unit, minStockAlert } = req.body;
 
     let stockItem = await Stock.findById(req.params.id);
     if (!stockItem) {
@@ -90,7 +86,6 @@ exports.updateStock = async (req, res, next) => {
     stockItem.sellingPrice = sellingPrice !== undefined ? round2(sellingPrice) : stockItem.sellingPrice;
     stockItem.quantity = quantity !== undefined ? round2(quantity) : stockItem.quantity;
     stockItem.unit = unit !== undefined ? unit : stockItem.unit;
-    stockItem.category = category !== undefined ? category : stockItem.category;
     stockItem.minStockAlert = minStockAlert !== undefined ? round2(minStockAlert) : stockItem.minStockAlert;
 
     await stockItem.save();
@@ -129,7 +124,7 @@ exports.deleteStock = async (req, res, next) => {
 // @route   GET /api/stock/pdf-report
 exports.getPdfStockList = async (req, res, next) => {
   try {
-    const stockItems = await Stock.find().select('name quantity unit sellingPrice category').sort({ name: 1 });
+    const stockItems = await Stock.find().select('name quantity unit sellingPrice').sort({ name: 1 });
 
     const formattedList = stockItems.map((item) => ({
       id: item._id,
@@ -138,7 +133,6 @@ exports.getPdfStockList = async (req, res, next) => {
       quantity: item.quantity,
       unit: item.unit,
       sellingPrice: item.sellingPrice,
-      category: item.category,
     }));
 
     res.status(200).json({

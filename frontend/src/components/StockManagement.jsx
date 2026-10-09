@@ -24,7 +24,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   const [stockList, setStockList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   // Column Sorting State
@@ -48,13 +47,12 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     sellingPrice: '',
     quantity: '',
     unit: 'kg',
-    category: 'Grains & Pulses',
     minStockAlert: 5,
   });
 
   useEffect(() => {
     fetchStock();
-  }, [selectedCategoryFilter]);
+  }, []);
 
   useEffect(() => {
     if (modalState?.open) {
@@ -70,7 +68,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   const fetchStock = async (query = searchQuery) => {
     try {
       setLoading(true);
-      const res = await stockAPI.getAll(query, selectedCategoryFilter);
+      const res = await stockAPI.getAll(query);
       setStockList(res.data.data || []);
       setErrorMsg('');
     } catch (err) {
@@ -95,7 +93,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       sellingPrice: '',
       quantity: '',
       unit: 'kg',
-      category: 'Grains & Pulses',
       minStockAlert: 5,
     });
     setShowModal(true);
@@ -109,7 +106,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       sellingPrice: item.sellingPrice,
       quantity: item.quantity,
       unit: item.unit || 'kg',
-      category: item.category || 'Grains & Pulses',
       minStockAlert: item.minStockAlert || 5,
     });
     setShowModal(true);
@@ -193,28 +189,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     });
   };
 
-  // Helper function to resolve category pill style
-  const getCategoryClass = (cat = '') => {
-    const lower = cat.toLowerCase();
-    if (lower.includes('grain') || lower.includes('धान्य')) return 'grains';
-    if (lower.includes('oil') || lower.includes('तेल')) return 'oils';
-    if (lower.includes('spice') || lower.includes('मसाले')) return 'spices';
-    if (lower.includes('snack') || lower.includes('चहा')) return 'snacks';
-    if (lower.includes('clean') || lower.includes('साबण')) return 'cleaning';
-    return 'general';
-  };
-
-  const getCategoryLabel = (c) => {
-    if (!c) return t.catGeneral || 'General';
-    const l = c.toLowerCase();
-    if (l.includes('grain') || l.includes('धान्य')) return t.catGrains || 'Grains & Pulses';
-    if (l.includes('oil') || l.includes('तेल')) return t.catOils || 'Oils & Ghee';
-    if (l.includes('spice') || l.includes('मसाले')) return t.catSpices || 'Spices & Dryfruits';
-    if (l.includes('snack') || l.includes('चहा')) return t.catSnacks || 'Beverages & Snacks';
-    if (l.includes('clean') || l.includes('साबण')) return t.catCleaning || 'Soaps & Cleaning';
-    return t.catGeneral || 'General Kirana';
-  };
-
   // Sorting Toggle Handler
   const handleSort = (field) => {
     if (sortField === field) {
@@ -233,11 +207,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
       valB = (b.name || '').toLowerCase();
       return sortDirection === 'asc' ? valA.localeCompare(valB, 'mr') : valB.localeCompare(valA, 'mr');
     }
-    if (sortField === 'category') {
-      valA = getCategoryLabel(a.category).toLowerCase();
-      valB = getCategoryLabel(b.category).toLowerCase();
-      return sortDirection === 'asc' ? valA.localeCompare(valB, 'mr') : valB.localeCompare(valA, 'mr');
-    }
     if (sortField === 'costPrice') {
       valA = Number(a.costPrice || 0);
       valB = Number(b.costPrice || 0);
@@ -253,10 +222,10 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     return sortDirection === 'asc' ? valA - valB : valB - valA;
   });
 
-  // Reset page when search or category filter changes
+  // Reset page when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCategoryFilter]);
+  }, [searchQuery]);
 
   // Pagination Calculations (20 items per page)
   const totalPages = Math.ceil(sortedStockList.length / itemsPerPage) || 1;
@@ -420,40 +389,18 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
         </div>
       </div>
 
-      {/* Filter & Search Toolbar */}
-      <div className="grid-filter" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-        {/* Search Bar */}
-        <div className="card-surface" style={{ padding: '0.85rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.85rem', background: '#ffffff' }}>
-          <SearchIcon size={20} color="var(--text-muted)" />
-          <input
-            type="text"
-            className="input-field"
-            placeholder={t.searchStockPlaceholder}
-            value={searchQuery}
-            onChange={handleSearchChange}
-            style={{ border: 'none', background: 'transparent', padding: 0, boxShadow: 'none' }}
-          />
-          {loading && <RefreshCwIcon size={18} color="var(--primary)" />}
-        </div>
-
-        {/* Category Filter Dropdown */}
-        <div className="card-surface" style={{ padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff' }}>
-          <FilterIcon size={18} color="var(--primary)" />
-          <CustomSelect
-            value={selectedCategoryFilter}
-            onChange={(val) => setSelectedCategoryFilter(val)}
-            options={[
-              { value: '', label: t.catAll || 'सर्व प्रकार' },
-              { value: 'Grains & Pulses', label: t.catGrains || 'धान्य व डाळी' },
-              { value: 'Oils & Ghee', label: t.catOils || 'तेल आणि तूप' },
-              { value: 'Spices & Dryfruits', label: t.catSpices || 'मसाले व ड्रायफ्रूट्स' },
-              { value: 'Beverages & Snacks', label: t.catSnacks || 'चहा, पेये व बिस्किटे' },
-              { value: 'Soaps & Cleaning', label: t.catCleaning || 'साबण व स्वच्छता' },
-              { value: 'General Kirana', label: t.catGeneral || 'जनरल किराणा' }
-            ]}
-            style={{ flex: 1 }}
-          />
-        </div>
+      {/* Search Toolbar */}
+      <div className="card-surface" style={{ padding: '0.85rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.85rem', background: '#ffffff', marginBottom: '1.5rem' }}>
+        <SearchIcon size={20} color="var(--text-muted)" />
+        <input
+          type="text"
+          className="input-field"
+          placeholder={t.searchStockPlaceholder}
+          value={searchQuery}
+          onChange={handleSearchChange}
+          style={{ border: 'none', background: 'transparent', padding: 0, boxShadow: 'none' }}
+        />
+        {loading && <RefreshCwIcon size={18} color="var(--primary)" />}
       </div>
 
       {errorMsg && (
@@ -474,16 +421,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
               >
                 <div style={{ display: 'inline-flex', alignItems: 'center' }}>
                   {t.productName} <RenderSortIcon field="name" />
-                </div>
-              </th>
-
-              <th
-                onClick={() => handleSort('category')}
-                style={{ padding: '1rem 1.2rem', color: 'var(--text-heading)', fontWeight: 800, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
-                title="मालाच्या प्रकाराने क्रमवारी लावा (Sort by Category)"
-              >
-                <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  {t.category} <RenderSortIcon field="category" />
                 </div>
               </th>
 
@@ -525,20 +462,19 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="6" style={{ padding: '2rem' }}>
+                <td colSpan="5" style={{ padding: '2rem' }}>
                   <LoadingSpinner text="मालाचा साठा लोड होत आहे..." />
                 </td>
               </tr>
             ) : sortedStockList.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   {t.noStockFound}
                 </td>
               </tr>
             ) : (
               paginatedStockList.map((item) => {
                 const isLowStock = item.quantity <= (item.minStockAlert || 5);
-                const catStyleClass = getCategoryClass(item.category);
 
                 return (
                   <tr key={`${item._id}-${sortField}-${sortDirection}`} className="stock-row-anim" style={{ borderBottom: '1px solid var(--border-color)' }}>
@@ -565,12 +501,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                           </span>
                         )}
                       </div>
-                    </td>
-
-                    <td style={{ padding: '1rem 1.2rem', whiteSpace: 'nowrap' }}>
-                      <span className={`category-pill ${catStyleClass}`}>
-                        <TagIcon size={12} /> {getCategoryLabel(item.category)}
-                      </span>
                     </td>
 
                     <td style={{ padding: '1rem 1.2rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
@@ -736,44 +666,24 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                 />
               </div>
 
-              {/* Category & Unit Selection */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.1rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                    {t.category} *
-                  </label>
-                  <CustomSelect
-                    value={formData.category}
-                    onChange={(val) => setFormData({ ...formData, category: val })}
-                    options={[
-                      { value: "Grains & Pulses", label: t.catGrains },
-                      { value: "Oils & Ghee", label: t.catOils },
-                      { value: "Spices & Dryfruits", label: t.catSpices },
-                      { value: "Beverages & Snacks", label: t.catSnacks },
-                      { value: "Soaps & Cleaning", label: t.catCleaning },
-                      { value: "General Kirana", label: t.catGeneral }
-                    ]}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                    {t.unit} *
-                  </label>
-                  <CustomSelect
-                    value={formData.unit}
-                    onChange={(val) => setFormData({ ...formData, unit: val })}
-                    options={[
-                      { value: "kg", label: t.unitKg },
-                      { value: "g", label: t.unitG },
-                      { value: "unit", label: t.unitUnit || 'नग' },
-                      { value: "liter", label: t.unitLiter },
-                      { value: "ml", label: t.unitMl || 'मिली' },
-                      { value: "meter", label: t.unitMeter },
-                      { value: "quintal", label: t.unitQuintal || 'क्विंटल' }
-                    ]}
-                  />
-                </div>
+              {/* Unit Selection */}
+              <div style={{ marginBottom: '1.1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                  {t.unit} *
+                </label>
+                <CustomSelect
+                  value={formData.unit}
+                  onChange={(val) => setFormData({ ...formData, unit: val })}
+                  options={[
+                    { value: "kg", label: t.unitKg },
+                    { value: "g", label: t.unitG },
+                    { value: "unit", label: t.unitUnit || 'नग' },
+                    { value: "liter", label: t.unitLiter },
+                    { value: "ml", label: t.unitMl || 'मिली' },
+                    { value: "meter", label: t.unitMeter },
+                    { value: "quintal", label: t.unitQuintal || 'क्विंटल' }
+                  ]}
+                />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.1rem' }}>
@@ -916,7 +826,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
             <tr style={{ background: '#4338ca', color: '#ffffff', textAlign: 'left' }}>
               <th style={{ padding: '0.75rem 1rem', width: '40px' }}>#</th>
               <th style={{ padding: '0.75rem 1rem' }}>{t.productName}</th>
-              <th style={{ padding: '0.75rem 1rem' }}>{t.category}</th>
+              <th style={{ padding: '0.75rem 1rem' }}>{t.costPrice}</th>
               <th style={{ padding: '0.75rem 1rem' }}>{t.sellingPrice}</th>
               <th style={{ padding: '0.75rem 1rem' }}>{t.quantity}</th>
             </tr>
@@ -928,7 +838,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                 <tr key={item._id} style={{ borderBottom: '1px solid #e7e5e4', background: index % 2 === 0 ? '#ffffff' : '#fafafa' }}>
                   <td style={{ padding: '0.65rem 1rem' }}>{index + 1}</td>
                   <td style={{ padding: '0.65rem 1rem', fontWeight: 700, color: '#1c1917' }}>{item.name}</td>
-                  <td style={{ padding: '0.65rem 1rem' }}>{item.category || 'General Kirana'}</td>
+                  <td style={{ padding: '0.65rem 1rem', color: '#666666' }}>₹{item.costPrice}</td>
                   <td style={{ padding: '0.65rem 1rem', fontWeight: 800, color: '#4338ca' }}>₹{item.sellingPrice}</td>
                   <td style={{ padding: '0.65rem 1rem', fontWeight: 800, color: isLowStock ? '#dc2626' : '#1c1917' }}>
                     {item.quantity} {item.unit}
