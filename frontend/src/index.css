@@ -874,6 +874,7 @@ select.select-compact {
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
+    text-align: center !important; /* Force center alignment at root level */
   }
 
   /* Hide all non-print UI elements */
@@ -910,9 +911,10 @@ select.select-compact {
   .printable-area {
     position: relative !important; /* Prevents text truncation & bottom clipping */
     display: block !important;
-    left: auto !important;
+    left: 0 !important;
+    right: 0 !important;
     top: auto !important;
-    margin: 0 auto !important; /* Centered on standard pages, full-width on thermal paper */
+    margin: 0 auto !important; /* Centered horizontally on page */
     border: none !important;
     box-shadow: none !important;
     background: #ffffff !important;
@@ -922,6 +924,7 @@ select.select-compact {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
+    text-align: left !important; /* Reset text alignment inside receipt */
   }
 
   /* Paper Roll Size Specific @media print rules */
@@ -949,8 +952,8 @@ select.select-compact {
     /* 80mm / 3-inch rolls - 3 inch = 76.2mm, safe printable area ~72mm */
     width: 72mm !important;
     max-width: 72mm !important;
-    margin-left: 0mm !important;
-    margin-right: 0.3mm !important;
+    margin-left: 4mm !important;
+    margin-right: 4mm !important;
     padding: 3mm 2mm !important;
     font-size: 9.5pt !important;
   }
