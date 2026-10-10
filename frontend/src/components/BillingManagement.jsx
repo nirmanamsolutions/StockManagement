@@ -464,17 +464,16 @@ export default function BillingManagement({ setActiveTab, t }) {
       if (!receiptElem) return;
 
       const canvas = await html2canvas(receiptElem, {
-        scale: 2,
+        scale: 3,
         backgroundColor: '#ffffff',
         logging: false,
+        useCORS: true,
       });
 
       const imgData = canvas.toDataURL('image/png');
       const widthMm = paperWidth === '100mm' ? 100 : paperWidth === '58mm' ? 58 : 80;
-      // An 80mm roll has a 72mm printable area (the remaining width is the
-      // printer's non-printable edge). Keep the PDF image inside that area so
-      // Windows/Android PDF print dialogs cannot crop the right-hand columns.
-      const printableWidthMm = paperWidth === '100mm' ? 92 : paperWidth === '58mm' ? 50 : 72;
+      // Active thermal head printable zone: 80mm roll = 72mm active, 100mm roll = 96mm active, 58mm roll = 48mm active
+      const printableWidthMm = paperWidth === '100mm' ? 96 : paperWidth === '58mm' ? 48 : 72;
       const horizontalMarginMm = (widthMm - printableWidthMm) / 2;
       const heightMm = Math.round((canvas.height * printableWidthMm) / canvas.width);
 
@@ -706,12 +705,12 @@ export default function BillingManagement({ setActiveTab, t }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: paperWidth === '100mm' ? '0.88rem' : paperWidth === '58mm' ? '0.72rem' : '0.8rem', marginBottom: '0.65rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                    <th style={{ padding: '0.3rem 0.08rem', width: '8%' }}>S/N</th>
-                    <th style={{ padding: '0.3rem 0.08rem', width: '38%', wordBreak: 'break-word' }}>Particulars</th>
-                    <th style={{ padding: '0.3rem 0.08rem', width: '13%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
-                    <th style={{ padding: '0.3rem 0.08rem', width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
+                    <th style={{ padding: '0.3rem 0.08rem', width: '11%' }}>S/N</th>
+                    <th style={{ padding: '0.3rem 0.08rem', width: '34%', wordBreak: 'break-word' }}>Particulars</th>
+                    <th style={{ padding: '0.3rem 0.08rem', width: '12%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
+                    <th style={{ padding: '0.3rem 0.08rem', width: '12%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
                     <th style={{ padding: '0.3rem 0.08rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
-                    <th style={{ padding: '0.3rem 0.08rem', width: '16%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
+                    <th style={{ padding: '0.3rem 0.08rem', width: '17%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
                   </tr>
                 </thead>
                 <tbody>
