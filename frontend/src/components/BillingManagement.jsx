@@ -695,7 +695,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                   <div><strong>NAME :</strong> {createdBill.customerName}</div>
                   <div><strong>PH :</strong> {createdBill.customerPhone || ''}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'right', paddingRight: '4px' }}>
                   <div><strong>Bill No. :</strong> {createdBill.billId}</div>
                   <div><strong>Date :</strong> {new Date(createdBill.createdAt).toLocaleDateString('en-GB')}</div>
                   <div><strong>Time :</strong> {new Date(createdBill.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
@@ -710,7 +710,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                     <th style={{ padding: '0.3rem 0.08rem', width: '12%', textAlign: 'right', whiteSpace: 'nowrap' }}>Qty</th>
                     <th style={{ padding: '0.3rem 0.08rem', width: '12%', textAlign: 'center', whiteSpace: 'nowrap' }}>Unit</th>
                     <th style={{ padding: '0.3rem 0.08rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>Rate</th>
-                    <th style={{ padding: '0.3rem 0.08rem', width: '17%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
+                    <th style={{ padding: '0.3rem 0.3rem 0.3rem 0.08rem', width: '17%', textAlign: 'right', whiteSpace: 'nowrap' }}>AMT</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -721,13 +721,13 @@ export default function BillingManagement({ setActiveTab, t }) {
                       <td style={{ padding: '0.3rem 0.08rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
                       <td style={{ padding: '0.3rem 0.08rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'UNIT'}</td>
                       <td style={{ padding: '0.3rem 0.08rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
-                      <td style={{ padding: '0.3rem 0.08rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
+                      <td style={{ padding: '0.3rem 0.3rem 0.3rem 0.08rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+              <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0.3rem 0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Tot Items : {createdBill.items.length}</span>
                 <span style={{ fontSize: '0.92rem', fontWeight: 800 }}>
                   एकूण रक्कम : {formatAmount(createdBill.totalAmount)}
@@ -743,7 +743,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                     <div>CASH REC. : {createdBill.paymentType === 'CASH' && createdBill.paymentStatus === 'PAID' ? formatAmount(createdBill.amountPaid) : '0'}</div>
                     <div>PHONE PAY : {createdBill.paymentType === 'UPI' && createdBill.paymentStatus === 'PAID' ? formatAmount(createdBill.amountPaid) : '0'}</div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right', paddingRight: '4px' }}>
                     <div>RETURN AMT : 0</div>
                     <div>CREDIT : {createdBill.paymentStatus === 'UNPAID' ? formatAmount(createdBill.totalAmount) : '0'}</div>
                   </div>

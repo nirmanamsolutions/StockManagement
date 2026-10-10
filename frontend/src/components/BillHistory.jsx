@@ -632,7 +632,7 @@ export default function BillHistory({ setActiveTab, t }) {
                     ) : ''}
                   </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+                <div style={{ textAlign: 'right', paddingRight: '4px' }}>
                   <div><strong>बिल नंबर :</strong> {selectedBill.billId}</div>
                   <div><strong>दिनांक :</strong> {new Date(selectedBill.createdAt).toLocaleDateString('en-GB')}</div>
                   <div><strong>वेळ :</strong> {new Date(selectedBill.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
@@ -648,7 +648,7 @@ export default function BillHistory({ setActiveTab, t }) {
                     <th style={{ padding: '0.3rem 0.08rem', width: '12%', textAlign: 'right', whiteSpace: 'nowrap' }}>प्रमाण</th>
                     <th style={{ padding: '0.3rem 0.08rem', width: '12%', textAlign: 'center', whiteSpace: 'nowrap' }}>युनिट</th>
                     <th style={{ padding: '0.3rem 0.08rem', width: '14%', textAlign: 'right', whiteSpace: 'nowrap' }}>दर</th>
-                    <th style={{ padding: '0.3rem 0.08rem', width: '17%', textAlign: 'right', whiteSpace: 'nowrap' }}>रक्कम</th>
+                    <th style={{ padding: '0.3rem 0.3rem 0.3rem 0.08rem', width: '17%', textAlign: 'right', whiteSpace: 'nowrap' }}>रक्कम</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -659,14 +659,14 @@ export default function BillHistory({ setActiveTab, t }) {
                       <td style={{ padding: '0.3rem 0.08rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatQuantity(item.quantity, item.unit)}</td>
                       <td style={{ padding: '0.3rem 0.08rem', textAlign: 'center', textTransform: 'uppercase', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{item.unit ? item.unit.toUpperCase() : 'नग'}</td>
                       <td style={{ padding: '0.3rem 0.08rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.sellingPrice)}</td>
-                      <td style={{ padding: '0.3rem 0.08rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
+                      <td style={{ padding: '0.3rem 0.3rem 0.3rem 0.08rem', textAlign: 'right', fontWeight: 800, whiteSpace: 'nowrap', verticalAlign: 'top' }}>{formatAmount(item.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
               {/* Total Items & Total Amount */}
-              <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
+              <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '0.45rem 0.3rem 0.45rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>एकूण वस्तू : {selectedBill.items.length}</span>
                 <span style={{ fontSize: '0.92rem', fontWeight: 800 }}>
                   एकूण रक्कम : {formatAmount(selectedBill.totalAmount)}
@@ -683,7 +683,7 @@ export default function BillHistory({ setActiveTab, t }) {
                     <div>रोख जमा : {selectedBill.paymentType === 'CASH' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
                     <div>फोनपे / युपीआय : {selectedBill.paymentType === 'UPI' && selectedBill.paymentStatus === 'PAID' ? formatAmount(selectedBill.amountPaid) : '0'}</div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+                  <div style={{ textAlign: 'right', paddingRight: '4px' }}>
                     <div>परत रक्कम : 0</div>
                     <div>उधारी : {selectedBill.paymentStatus === 'UNPAID' ? formatAmount(selectedBill.totalAmount) : '0'}</div>
                   </div>
