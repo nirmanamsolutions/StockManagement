@@ -15,7 +15,35 @@ import { translations } from './i18n/translations';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('kirana_admin_auth') === 'true';
+    // Check if user is authenticated and session is still valid (within 7 days)
+    const authFlag = localStorage.getItem('kirana_admin_auth');
+    const authSession = localStorage.getItem('kirana_auth_session');
+    
+    if (authFlag === 'true' && authSession) {
+      try {
+        const session = JSON.parse(authSession);
+        const currentTime = Date.now();
+        const sessionAge = currentTime - session.timestamp;
+        
+        // Check if session is still valid (within 7 days)
+        if (sessionAge < session.expiresIn) {
+          return true;
+        } else {
+          // Session expired - cleanup
+          localStorage.removeItem('kirana_admin_auth');
+          localStorage.removeItem('kirana_auth_session');
+          localStorage.removeItem('kirana_user');
+          return false;
+        }
+      } catch (e) {
+        // Invalid session data - cleanup
+        localStorage.removeItem('kirana_admin_auth');
+        localStorage.removeItem('kirana_auth_session');
+        return false;
+      }
+    }
+    
+    return false;
   });
   const [activeTab, setActiveTabState] = useState(() => {
     return localStorage.getItem('kirana_active_tab') || 'home';
@@ -95,8 +123,36 @@ export default function App() {
     };
 
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+
+    // Periodic session validation check (every 1 hour)
+    const sessionCheckInterval = setInterval(() => {
+      if (isAuthenticated) {
+        const authSession = localStorage.getItem('kirana_auth_session');
+        if (authSession) {
+          try {
+            const session = JSON.parse(authSession);
+            const currentTime = Date.now();
+            const sessionAge = currentTime - session.timestamp;
+            
+            // If session expired, logout user
+            if (sessionAge >= session.expiresIn) {
+              handleLogout();
+              alert('तुमचा session संपला आहे. कृपया पुन्हा लॉगिन करा.');
+            }
+          } catch (e) {
+            handleLogout();
+          }
+        } else {
+          handleLogout();
+        }
+      }
+    }, 60 * 60 * 1000); // Check every 1 hour
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      clearInterval(sessionCheckInterval);
+    };
+  }, [isAuthenticated]);
 
   const handleLoginSuccess = () => {
     localStorage.setItem('kirana_admin_auth', 'true');
@@ -105,6 +161,7 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('kirana_admin_auth');
+    localStorage.removeItem('kirana_auth_session');
     localStorage.removeItem('kirana_user');
     localStorage.removeItem('kirana_active_tab');
     setIsAuthenticated(false);

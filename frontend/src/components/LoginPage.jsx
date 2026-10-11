@@ -26,8 +26,15 @@ export default function LoginPage({ onLogin, lang, setLang, t }) {
     try {
       const res = await authAPI.login(username.trim(), password);
       if (res.data && res.data.success) {
-        // Save logged in user info
+        // Save logged in user info with 7-day expiry timestamp
+        const loginData = {
+          user: res.data.data,
+          timestamp: Date.now(),
+          expiresIn: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+        };
         localStorage.setItem('kirana_user', JSON.stringify(res.data.data));
+        localStorage.setItem('kirana_auth_session', JSON.stringify(loginData));
+        localStorage.setItem('kirana_admin_auth', 'true');
         onLogin();
       } else {
         setErrorMsg(res.data?.message || t.invalidCredentials || 'चुकीचा युझरनेम किंवा पासवर्ड!');
