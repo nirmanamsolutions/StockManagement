@@ -721,13 +721,12 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.6rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
-                    {t.quantity} *
+                    {t.quantity}
                   </label>
                   <input
                     type="number"
                     step={isIntegerUnit(formData.unit) ? "1" : "0.01"}
                     className="input-field"
-                    required
                     placeholder={isIntegerUnit(formData.unit) ? "0" : "0.00"}
                     value={formData.quantity}
                     onChange={(e) => setFormData({
