@@ -10,6 +10,7 @@ import {
   FilterIcon,
   TagIcon,
   ArrowLeftIcon,
+  ArrowUpIcon,
   PackageIcon
 } from '@animateicons/react/lucide';
 import jsPDF from 'jspdf';
@@ -29,10 +30,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
   // Column Sorting State
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc'); // 'asc' | 'desc'
-
-  // Pagination State (20 items per page)
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
 
   // Loading States for Action Buttons
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -222,16 +219,6 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
     return sortDirection === 'asc' ? valA - valB : valB - valA;
   });
 
-  // Reset page when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  // Pagination Calculations (20 items per page)
-  const totalPages = Math.ceil(sortedStockList.length / itemsPerPage) || 1;
-  const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
-  const startIndex = (validCurrentPage - 1) * itemsPerPage;
-  const paginatedStockList = sortedStockList.slice(startIndex, startIndex + itemsPerPage);
 
   // Sort Indicator Icon Component
   const RenderSortIcon = ({ field }) => {
@@ -473,7 +460,7 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
                 </td>
               </tr>
             ) : (
-              paginatedStockList.map((item) => {
+              sortedStockList.map((item) => {
                 const isLowStock = item.quantity <= (item.minStockAlert || 5);
 
                 return (
@@ -557,13 +544,13 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
           </tbody>
         </table>
 
-        {/* Pagination Controls Bar (20 Items Per Page) */}
+        {/* Continuous Stock Summary Bar (No Pagination) */}
         {sortedStockList.length > 0 && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0.85rem 1.2rem',
+            padding: '0.85rem 1.25rem',
             borderTop: '1px solid var(--border-color)',
             background: 'var(--bg-surface-raised)',
             flexWrap: 'wrap',
@@ -571,61 +558,32 @@ export default function StockManagement({ modalState, setModalState, setActiveTa
             fontSize: '0.84rem'
           }}>
             <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
-              दाखवत आहे: <strong>{startIndex + 1} - {Math.min(startIndex + itemsPerPage, sortedStockList.length)}</strong> (एकूण <strong>{sortedStockList.length}</strong> माल) • पान <strong>{validCurrentPage}</strong> / {totalPages}
+              एकूण उपलब्ध सामान: <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>{sortedStockList.length}</strong> {searchQuery ? `(शोध: "${searchQuery}")` : ''}
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                सर्व सामान एकाच यादीमध्ये अखंड दर्शविले आहे
+              </span>
               <button
                 type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 className="btn-secondary"
-                disabled={validCurrentPage <= 1}
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.8rem',
-                  opacity: validCurrentPage <= 1 ? 0.5 : 1,
-                  cursor: validCurrentPage <= 1 ? 'not-allowed' : 'pointer'
+                  width: '32px',
+                  height: '32px',
+                  padding: 0,
+                  borderRadius: '50%',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--primary)',
+                  borderColor: 'var(--primary)',
+                  boxShadow: 'var(--shadow-subtle)'
                 }}
+                aria-label="Back to Top"
+                title="वर जा (Back to Top)"
               >
-                ← मागे
-              </button>
-
-              {/* Page Number Buttons */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  type="button"
-                  onClick={() => setCurrentPage(pageNum)}
-                  style={{
-                    padding: '0.35rem 0.65rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid',
-                    borderColor: pageNum === validCurrentPage ? 'var(--primary)' : 'var(--border-color)',
-                    background: pageNum === validCurrentPage ? 'var(--primary)' : '#ffffff',
-                    color: pageNum === validCurrentPage ? '#ffffff' : 'var(--text-heading)',
-                    cursor: 'pointer',
-                    minWidth: '32px'
-                  }}
-                >
-                  {pageNum}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                className="btn-secondary"
-                disabled={validCurrentPage >= totalPages}
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.8rem',
-                  opacity: validCurrentPage >= totalPages ? 0.5 : 1,
-                  cursor: validCurrentPage >= totalPages ? 'not-allowed' : 'pointer'
-                }}
-              >
-                पुढे →
+                <ArrowUpIcon size={16} color="var(--primary)" />
               </button>
             </div>
           </div>

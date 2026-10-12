@@ -11,6 +11,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import WebsitePageLoader from './components/WebsitePageLoader';
 import LegalDocumentation from './components/LegalDocumentation';
 import Footer from './components/Footer';
+import BackToTopButton from './components/BackToTopButton';
 import { translations } from './i18n/translations';
 
 export default function App() {
@@ -269,6 +270,8 @@ export default function App() {
         setActiveTab={setActiveTab} 
         t={t} 
       />
+
+      <BackToTopButton threshold={180} />
     </div>
   );
 }

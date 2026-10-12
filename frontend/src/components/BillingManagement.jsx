@@ -94,14 +94,6 @@ export default function BillingManagement({ setActiveTab, t }) {
   const [loadingStock, setLoadingStock] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Pagination State for Catalog (8 items per page - 2 full rows of 4 cards)
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
   // Cart Items State: [{ productId, name, unit, sellingPrice, costPrice, quantity, subtotal, baseUnit }]
   const [cartItems, setCartItems] = useState([]);
   const [mobilePosTab, setMobilePosTab] = useState('catalog'); // 'catalog' or 'cart'
@@ -509,11 +501,7 @@ export default function BillingManagement({ setActiveTab, t }) {
     })
     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'mr', { numeric: true, sensitivity: 'base' }));
 
-  // Pagination Calculations (12 items per page)
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
-  const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
-  const startIndex = (validCurrentPage - 1) * itemsPerPage;
-  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
 
   return (
     <div style={{ maxWidth: '100%', width: '100%', margin: '0 auto', padding: '0 1.25rem', paddingBottom: '6.5rem', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -902,7 +890,7 @@ export default function BillingManagement({ setActiveTab, t }) {
                       boxSizing: 'border-box'
                     }}
                   >
-                    {paginatedProducts.map((product) => {
+                    {filteredProducts.map((product) => {
                       const cartItem = getCartItem(product._id);
                       const isLowStock = product.quantity <= (product.minStockAlert || 5);
                       const isOutOfStock = product.quantity <= 0;
@@ -1083,81 +1071,31 @@ export default function BillingManagement({ setActiveTab, t }) {
                     })}
                   </div>
 
-                  {/* Catalog Pagination Bar */}
+                  {/* Continuous Catalog Products Summary (No Pagination) */}
                   {filteredProducts.length > 0 && (
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '0.75rem 1rem',
+                        padding: '0.65rem 1rem',
                         background: '#ffffff',
                         borderRadius: 'var(--radius-md)',
                         border: '1px solid var(--border-color)',
-                        boxShadow: 'var(--shadow-card)',
                         marginTop: '0.85rem',
-                        flexWrap: 'wrap',
-                        gap: '0.65rem',
-                        fontSize: '0.82rem'
+                        fontSize: '0.82rem',
+                        color: 'var(--text-muted)',
+                        fontWeight: 600
                       }}
                     >
-                      <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
-                        दाखवत आहे: <strong>{startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredProducts.length)}</strong> (एकूण <strong>{filteredProducts.length}</strong> माल) • पान <strong>{validCurrentPage}</strong> / {totalPages}
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          disabled={validCurrentPage <= 1}
-                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                          style={{
-                            padding: '0.3rem 0.65rem',
-                            fontSize: '0.78rem',
-                            opacity: validCurrentPage <= 1 ? 0.5 : 1,
-                            cursor: validCurrentPage <= 1 ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          ← मागे
-                        </button>
-
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            onClick={() => setCurrentPage(pageNum)}
-                            style={{
-                              padding: '0.3rem 0.55rem',
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
-                              borderRadius: 'var(--radius-sm)',
-                              border: '1px solid',
-                              borderColor: pageNum === validCurrentPage ? 'var(--primary)' : 'var(--border-color)',
-                              background: pageNum === validCurrentPage ? 'var(--primary)' : '#ffffff',
-                              color: pageNum === validCurrentPage ? '#ffffff' : 'var(--text-heading)',
-                              cursor: 'pointer',
-                              minWidth: '30px'
-                            }}
-                          >
-                            {pageNum}
-                          </button>
-                        ))}
-
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          disabled={validCurrentPage >= totalPages}
-                          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                          style={{
-                            padding: '0.3rem 0.65rem',
-                            fontSize: '0.78rem',
-                            opacity: validCurrentPage >= totalPages ? 0.5 : 1,
-                            cursor: validCurrentPage >= totalPages ? 'not-allowed' : 'pointer'
-                          }}
-                        >
-                          पुढे →
-                        </button>
-                      </div>
+                      <span>
+                        एकूण दाखवत आहे: <strong style={{ color: 'var(--primary)' }}>{filteredProducts.length}</strong> वस्तू
+                      </span>
+                      {searchQuery && (
+                        <span style={{ fontSize: '0.78rem' }}>
+                          (शोध निकाल: <strong>{filteredProducts.length}</strong> वस्तू)
+                        </span>
+                      )}
                     </div>
                   )}
                 </>

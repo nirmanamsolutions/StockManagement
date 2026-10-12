@@ -7,6 +7,7 @@ import {
   DownloadIcon, 
   EyeIcon, 
   ArrowLeftIcon, 
+  ArrowUpIcon,
   CheckIcon, 
   XIcon, 
   BanknoteIcon, 
@@ -372,7 +373,8 @@ export default function BillHistory({ setActiveTab, t }) {
             <p style={{ fontWeight: 600 }}>{t.noBillRecords || 'कोणताही बिलाचा रेकॉर्ड सापडला नाही.'}</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <>
+            <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
@@ -473,8 +475,47 @@ export default function BillHistory({ setActiveTab, t }) {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Table Footer Summary Bar with Back to Top */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.85rem 0.5rem 0.25rem 0.5rem',
+            borderTop: '1px solid var(--border-color)',
+            marginTop: '0.5rem',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            fontSize: '0.84rem'
+          }}>
+            <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+              एकूण बिलं: <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>{bills.length}</strong> {selectedDate ? `(तारीख: ${selectedDate})` : ''} {searchQuery ? `(शोध: "${searchQuery}")` : ''}
+            </div>
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="btn-secondary"
+              style={{
+                width: '32px',
+                height: '32px',
+                padding: 0,
+                borderRadius: '50%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)',
+                borderColor: 'var(--primary)',
+                boxShadow: 'var(--shadow-subtle)'
+              }}
+              aria-label="Back to Top"
+              title="वर जा (Back to Top)"
+            >
+              <ArrowUpIcon size={16} color="var(--primary)" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
 
       {/* VIEW RECEIPT MODAL */}
       {showReceiptModal && selectedBill && (

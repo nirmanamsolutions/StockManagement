@@ -1378,3 +1378,16 @@ button.btn-loading {
   opacity: 0.75 !important;
   pointer-events: none !important;
 }
+
+/* Floating Back To Top Button */
+.back-to-top-btn {
+  bottom: 2.2rem;
+  right: 2.2rem;
+}
+
+@media (max-width: 768px) {
+  .back-to-top-btn {
+    bottom: 5.25rem !important;
+    right: 1.25rem !important;
+  }
+}
