@@ -1391,3 +1391,21 @@ button.btn-loading {
     right: 1.25rem !important;
   }
 }
+
+/* Floating "माल जोडा" Top-Right Button in Billing */
+.maal-jodha-top-btn {
+  position: fixed;
+  top: 5.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+}
+
+@media (max-width: 768px) {
+  .maal-jodha-top-btn {
+    top: 4.85rem !important;
+    right: 0.75rem !important;
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.82rem !important;
+  }
+}
+

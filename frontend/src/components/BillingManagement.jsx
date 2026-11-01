@@ -118,6 +118,18 @@ export default function BillingManagement({ setActiveTab, t }) {
   const [quickStockQty, setQuickStockQty] = useState('');
   const [isUpdatingStock, setIsUpdatingStock] = useState(false);
 
+  // "माल जोडा" (Add Stock) Modal State in Billing
+  const [showMaalJodhaModal, setShowMaalJodhaModal] = useState(false);
+  const [isSubmittingMaalJodha, setIsSubmittingMaalJodha] = useState(false);
+  const [maalJodhaFormData, setMaalJodhaFormData] = useState({
+    name: '',
+    costPrice: '',
+    sellingPrice: '',
+    quantity: '',
+    unit: 'kg',
+    minStockAlert: 5,
+  });
+
   // Custom UI Dialog Modal State (Replaces built-in browser alerts)
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
@@ -495,6 +507,62 @@ export default function BillingManagement({ setActiveTab, t }) {
     setCreatedBill(null);
   };
 
+  // "माल जोडा" (Add Stock Directly from Billing) Handlers
+  const handleOpenMaalJodha = () => {
+    setMaalJodhaFormData({
+      name: '',
+      costPrice: '',
+      sellingPrice: '',
+      quantity: '',
+      unit: 'kg',
+      minStockAlert: 5,
+    });
+    setShowMaalJodhaModal(true);
+  };
+
+  const handleMaalJodhaSubmit = async (e) => {
+    e.preventDefault();
+    if (!maalJodhaFormData.name || !maalJodhaFormData.name.trim()) {
+      showAlert('कृपया सामानाचे नाव टाका!', 'सावधानी', 'warning');
+      return;
+    }
+    const costPriceNum = parseFloat(maalJodhaFormData.costPrice);
+    if (isNaN(costPriceNum) || costPriceNum < 0) {
+      showAlert('कृपया योग्य खरेदी भाव टाका!', 'सावधानी', 'warning');
+      return;
+    }
+    const sellingPriceNum = parseFloat(maalJodhaFormData.sellingPrice);
+    if (isNaN(sellingPriceNum) || sellingPriceNum < 0) {
+      showAlert('कृपया योग्य विक्री भाव टाका!', 'सावधानी', 'warning');
+      return;
+    }
+
+    const payload = {
+      name: maalJodhaFormData.name.trim(),
+      costPrice: Math.round(costPriceNum * 100) / 100,
+      sellingPrice: Math.round(sellingPriceNum * 100) / 100,
+      quantity: Math.round((Number(maalJodhaFormData.quantity) || 0) * 100) / 100,
+      unit: maalJodhaFormData.unit || 'kg',
+      minStockAlert: Math.round((Number(maalJodhaFormData.minStockAlert) || 5) * 100) / 100,
+    };
+
+    try {
+      setIsSubmittingMaalJodha(true);
+      await stockAPI.create(payload);
+      setShowMaalJodhaModal(false);
+      // Immediately reload stock catalog in billing
+      await fetchStock();
+      showAlert('नवीन माल साठ्यामध्ये यशस्वीरित्या जोडला गेला!', 'यशस्वी', 'success');
+      // Set search query to the newly added product name so it's instantly visible at the top of the billing list
+      setSearchQuery(payload.name);
+    } catch (err) {
+      console.error('Error adding stock from billing:', err);
+      showAlert(err.response?.data?.message || 'साठा सेव्ह करताना त्रुटी आली. कृपया पुन्हा प्रयत्न करा.', 'त्रुटी', 'danger');
+    } finally {
+      setIsSubmittingMaalJodha(false);
+    }
+  };
+
   const filteredProducts = stockList
     .filter((item) => {
       return item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -535,6 +603,45 @@ export default function BillingManagement({ setActiveTab, t }) {
           <ArrowLeftIcon size={22} />
         </button>
       )}
+
+      {/* Floating Fixed Top-Right "माल जोडा" Button (Outside Main Container, Prominently Visible) */}
+      <button
+        type="button"
+        className="no-print maal-jodha-top-btn"
+        onClick={handleOpenMaalJodha}
+        style={{
+          position: 'fixed',
+          top: '5.25rem',
+          right: '1.25rem',
+          zIndex: 9999,
+          padding: '0.62rem 1.25rem',
+          borderRadius: '24px',
+          backgroundColor: '#16a34a',
+          background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+          color: '#ffffff',
+          border: '2px solid rgba(255, 255, 255, 0.9)',
+          boxShadow: '0 4px 18px rgba(22, 163, 74, 0.45), 0 2px 6px rgba(0, 0, 0, 0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          cursor: 'pointer',
+          fontSize: '0.92rem',
+          fontWeight: 800,
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px) scale(1.04)';
+          e.currentTarget.style.boxShadow = '0 6px 22px rgba(22, 163, 74, 0.6), 0 3px 8px rgba(0, 0, 0, 0.18)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 18px rgba(22, 163, 74, 0.45), 0 2px 6px rgba(0, 0, 0, 0.15)';
+        }}
+        title="साठ्यामध्ये नवीन माल जोडा (Add New Stock Item)"
+      >
+        <PlusIcon size={18} color="#ffffff" strokeWidth={2.5} />
+        <span>{t.btnAddStock || 'माल जोडा'}</span>
+      </button>
 
       {/* Page Header Bar */}
       <div className="no-print" style={{
@@ -1114,9 +1221,11 @@ export default function BillingManagement({ setActiveTab, t }) {
                     <ShoppingCartIcon size={22} color="var(--primary)" />
                     बिलातील वस्तूंची यादी
                   </h3>
-                  <span style={{ fontSize: '0.8rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontWeight: 800 }}>
-                    {cartItems.length} वस्तू
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8rem', background: 'var(--primary-light)', color: 'var(--primary)', padding: '0.25rem 0.65rem', borderRadius: '12px', fontWeight: 800 }}>
+                      {cartItems.length} वस्तू
+                    </span>
+                  </div>
                 </div>
 
                 {/* Selected Items List Container - Spacious & Uncluttered */}
@@ -1597,6 +1706,225 @@ export default function BillingManagement({ setActiveTab, t }) {
                     </>
                   ) : (
                     'साठा सेव्ह करा (Save)'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* "माल जोडा" (Add Stock Directly from Billing) Modal */}
+      {showMaalJodhaModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100000,
+          overflowY: 'auto',
+          padding: '1.5rem 1rem'
+        }}>
+          <div className="card-surface" style={{
+            width: '100%',
+            maxWidth: '540px',
+            padding: '2.2rem',
+            background: '#ffffff',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            borderRadius: 'var(--radius-md)',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '1.5rem',
+              paddingBottom: '0.75rem',
+              borderBottom: '2px solid var(--border-color)'
+            }}>
+              <h3 style={{
+                margin: 0,
+                fontSize: '1.35rem',
+                color: 'var(--text-heading)',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                {t.btnAddStock || 'माल जोडा'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => !isSubmittingMaalJodha && setShowMaalJodhaModal(false)}
+                disabled={isSubmittingMaalJodha}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.4rem',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  lineHeight: 1,
+                  padding: '0.2rem'
+                }}
+                title={t.cancelBtn || 'रद्द करा'}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleMaalJodhaSubmit}>
+              {/* Product Name */}
+              <div style={{ marginBottom: '1.1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                  {t.productName || 'सामानाचे नाव'} *
+                </label>
+                <input
+                  type="text"
+                  className="input-field"
+                  required
+                  autoFocus
+                  placeholder="उदा. बास्मती तांदूळ १ कि.ग्रा."
+                  value={maalJodhaFormData.name}
+                  onChange={(e) => setMaalJodhaFormData({ ...maalJodhaFormData, name: e.target.value })}
+                  style={{ height: '42px', fontSize: '0.95rem' }}
+                />
+              </div>
+
+              {/* Unit Selection */}
+              <div style={{ marginBottom: '1.1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                  {t.unit || 'युनिट'} *
+                </label>
+                <CustomSelect
+                  value={maalJodhaFormData.unit}
+                  onChange={(val) => setMaalJodhaFormData({ ...maalJodhaFormData, unit: val })}
+                  options={[
+                    { value: "kg", label: t.unitKg || 'किलोग्राम' },
+                    { value: "g", label: t.unitG || 'ग्राम' },
+                    { value: "unit", label: t.unitUnit || 'नग' },
+                    { value: "liter", label: t.unitLiter || 'लिटर' },
+                    { value: "ml", label: t.unitMl || 'मिली' },
+                    { value: "meter", label: t.unitMeter || 'मीटर' },
+                    { value: "quintal", label: t.unitQuintal || 'क्विंटल' }
+                  ]}
+                />
+              </div>
+
+              {/* Cost Price & Selling Price */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                    {t.costPrice || 'खरेदी भाव (₹)'} *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input-field"
+                    required
+                    placeholder="0.00"
+                    value={maalJodhaFormData.costPrice}
+                    onChange={(e) => setMaalJodhaFormData({ ...maalJodhaFormData, costPrice: sanitizeDecimalInput(e.target.value) })}
+                    style={{ height: '42px', fontSize: '0.95rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                    {t.sellingPrice || 'विक्री भाव (₹)'} *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input-field"
+                    required
+                    placeholder="0.00"
+                    value={maalJodhaFormData.sellingPrice}
+                    onChange={(e) => setMaalJodhaFormData({ ...maalJodhaFormData, sellingPrice: sanitizeDecimalInput(e.target.value) })}
+                    style={{ height: '42px', fontSize: '0.95rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Quantity & Min Stock Alert */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.6rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                    {t.quantity || 'शिल्लक माल'} (प्रमाण)
+                  </label>
+                  <input
+                    type="number"
+                    step={isIntegerUnit(maalJodhaFormData.unit) ? "1" : "0.01"}
+                    className="input-field"
+                    placeholder={isIntegerUnit(maalJodhaFormData.unit) ? "0" : "0.00"}
+                    value={maalJodhaFormData.quantity}
+                    onChange={(e) => setMaalJodhaFormData({
+                      ...maalJodhaFormData,
+                      quantity: isIntegerUnit(maalJodhaFormData.unit) ? sanitizeIntegerInput(e.target.value) : sanitizeDecimalInput(e.target.value)
+                    })}
+                    style={{ height: '42px', fontSize: '0.95rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.88rem', marginBottom: '0.4rem', color: 'var(--text-heading)', fontWeight: 700 }}>
+                    {t.minStockAlert || 'कमी साठा वॉर्निंग'}
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    className="input-field"
+                    placeholder="5"
+                    value={maalJodhaFormData.minStockAlert}
+                    onChange={(e) => setMaalJodhaFormData({ ...maalJodhaFormData, minStockAlert: sanitizeIntegerInput(e.target.value) })}
+                    style={{ height: '42px', fontSize: '0.95rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.85rem' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowMaalJodhaModal(false)}
+                  disabled={isSubmittingMaalJodha}
+                  style={{ padding: '0.55rem 1.15rem', fontSize: '0.88rem' }}
+                >
+                  {t.cancelBtn || 'रद्द करा'}
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={isSubmittingMaalJodha}
+                  style={{
+                    padding: '0.55rem 1.35rem',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                    border: 'none',
+                    boxShadow: '0 4px 12px rgba(22, 163, 74, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  {isSubmittingMaalJodha ? (
+                    <>
+                      <span className="btn-spinner" />
+                      <span>साठवत आहे...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusIcon size={16} color="#ffffff" strokeWidth={2.5} />
+                      <span>{t.saveStockBtn || 'साठा सेव्ह करा'}</span>
+                    </>
                   )}
                 </button>
               </div>
