@@ -71,6 +71,10 @@
 }
 
 /* Global Reset */
+html {
+  scroll-behavior: smooth;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -1392,20 +1396,96 @@ button.btn-loading {
   }
 }
 
-/* Floating "माल जोडा" Top-Right Button in Billing */
-.maal-jodha-top-btn {
-  position: fixed;
-  top: 5.25rem;
-  right: 1.25rem;
-  z-index: 9999;
+/* Minimalist Apple-Style Header Actions */
+.apple-action-pill {
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.apple-action-pill:hover {
+  transform: translateY(-1px);
+}
+.apple-action-pill:active {
+  transform: scale(0.98);
 }
 
-@media (max-width: 768px) {
-  .maal-jodha-top-btn {
-    top: 4.85rem !important;
-    right: 0.75rem !important;
-    padding: 0.45rem 0.85rem !important;
-    font-size: 0.82rem !important;
-  }
+/* =========================================================
+   POS Search Bar Micro-Interactions & Smooth Transitions
+   ========================================================= */
+.pos-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.pos-search-input {
+  width: 100%;
+  height: 46px;
+  padding-left: 2.75rem;
+  padding-right: 5.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  background: #ffffff;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.pos-search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3.5px var(--primary-glow), 0 2px 8px rgba(67, 56, 202, 0.08);
+  outline: none;
+}
+
+/* Apple-Style Simple Smooth Fade Out & Fade In Transition */
+.pos-fade-transition {
+  opacity: 1;
+  transition: opacity 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
+  will-change: opacity;
+}
+
+.pos-fade-transition.fading-out {
+  opacity: 0.2;
+  transition: opacity 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.pos-search-wrapper.fading-out .pos-search-input {
+  opacity: 0.2;
+  transition: opacity 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.pos-search-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.pos-search-clear-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* Apple-style Subtle Card Spotlight Highlight (Minimalist, No Jitter) */
+.card-spotlight-added {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2.5px rgba(67, 56, 202, 0.14) !important;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+/* Apple-style Gentle Micro-Bump */
+.cart-bump-animation {
+  transform: scale(1.04);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
