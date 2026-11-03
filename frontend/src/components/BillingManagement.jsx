@@ -106,14 +106,14 @@ export default function BillingManagement({ setActiveTab, t }) {
   const [cartBump, setCartBump] = useState(false);
   const [isFadeOut, setIsFadeOut] = useState(false);
   const [lastAddedProductId, setLastAddedProductId] = useState(null);
-  const [cardDrafts, setCardDrafts] = useState({}); // { [productId]: { quantity: '1', unit: 'kg' } }
+  const [cardDrafts, setCardDrafts] = useState({}); // { [productId]: { quantity: '0', unit: 'kg' } }
 
   const getCardDraft = (product) => {
     if (cardDrafts[product._id]) {
       return cardDrafts[product._id];
     }
     return {
-      quantity: '1',
+      quantity: '0',
       unit: normalizeUnit(product.unit),
     };
   };
@@ -121,7 +121,7 @@ export default function BillingManagement({ setActiveTab, t }) {
   const handleDraftChange = (product, field, value) => {
     const baseUnit = normalizeUnit(product.unit);
     setCardDrafts((prev) => {
-      const cur = prev[product._id] || { quantity: '1', unit: baseUnit };
+      const cur = prev[product._id] || { quantity: '0', unit: baseUnit };
       let newQty = cur.quantity;
       let newUnit = cur.unit;
 
