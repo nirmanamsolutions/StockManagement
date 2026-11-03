@@ -1497,18 +1497,6 @@ export default function BillingManagement({ setActiveTab, t }) {
                                   min="0"
                                   placeholder={inCart ? "0" : "1"}
                                   value={inCart ? (curQty > 0 ? curQty : '') : draft.quantity}
-                                  onFocus={(e) => {
-                                    if (!inCart && (draft.quantity === '0' || draft.quantity === 0)) {
-                                      handleDraftChange(product, 'quantity', '');
-                                    } else if (inCart && (curQty === 0 || curQty === '0')) {
-                                      handleCatalogCardFieldChange(product, 'quantity', '');
-                                    }
-                                  }}
-                                  onBlur={(e) => {
-                                    if (!inCart && (draft.quantity === '' || draft.quantity == null)) {
-                                      handleDraftChange(product, 'quantity', '0');
-                                    }
-                                  }}
                                   onChange={(e) => {
                                     if (inCart) {
                                       handleCatalogCardFieldChange(product, 'quantity', e.target.value);
